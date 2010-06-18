@@ -315,7 +315,10 @@ static BOOL CompareArchivedFilesRR(const char * /* szFileName */, HANDLE hFile1,
 
             // Also test negative seek
             if(rand() & 1)
-                dwPosition = -dwPosition;
+            {
+                int nPosition = (int)dwPosition;
+                dwPosition = (DWORD)(-nPosition);
+            }
 
             // Allocate buffers
             pbBuffer1 = new BYTE[dwToRead];
@@ -1196,14 +1199,6 @@ static int TestCreateArchiveCopy(const char * szMpqName, const char * szMpqCopyN
                 {
                     ShowProcessedFile(sf.cFileName);
                     SFileSetLocale(sf.lcLocale);
-
-                    // For Sam Wilkins: On Mac, it fails to add the file
-                    // Interface\AddOns\Blizzard_TrainerUI\Localization.lua
-                    if(!stricmp(sf.cFileName, "Interface\\AddOns\\Blizzard_TrainerUI\\Localization.lua"))
-                    {
-                        printf("Put breakpoint here\n");
-                        //DebugBreak();
-                    }
 
                     // Create the local file name
                     sprintf(szLocalFile, "%s\\%s", szWorkDir, GetPlainName(sf.cFileName));

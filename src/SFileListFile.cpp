@@ -458,7 +458,7 @@ int WINAPI SFileAddListFile(HANDLE hMpq, const char * szListFile)
 {
     TListFileCache * pCache = NULL;
     TMPQArchive * ha = (TMPQArchive *)hMpq;
-    char  szFileName[MAX_PATH + 1];
+    char  szFileName[MAX_PATH];
     size_t nLength = 0;
     int nError = ERROR_SUCCESS;
 
@@ -470,7 +470,7 @@ int WINAPI SFileAddListFile(HANDLE hMpq, const char * szListFile)
     if(nError == ERROR_SUCCESS)
     {
         // Load the node list. Add the node for every locale in the archive
-        while((nLength = ReadListFileLine(pCache, szFileName, sizeof(szFileName) - 1)) > 0)
+        while((nLength = ReadListFileLine(pCache, szFileName, sizeof(szFileName))) > 0)
             SListFileCreateNodeForAllLocales(ha, szFileName);
 
         // Also, add three special files to the listfile:

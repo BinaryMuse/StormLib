@@ -949,13 +949,16 @@ int WriteSectorOffsets(TMPQFile * hf)
     assert(hf->SectorOffsets != NULL);
 
     // If file is encrypted, sector positions are also encrypted
-    BSWAP_ARRAY32_UNSIGNED(hf->SectorOffsets, dwSectorPosLen);
     if(pBlock->dwFlags & MPQ_FILE_ENCRYPTED)
         EncryptMpqBlock(hf->SectorOffsets, dwSectorPosLen, hf->dwFileKey - 1);
     
     // Write sector offsets to the archive
-    bResult = FileStream_Write(ha->pStream, &hf->RawFilePos, hf->SectorOffsets, dwSectorPosLen);
     BSWAP_ARRAY32_UNSIGNED(hf->SectorOffsets, dwSectorPosLen);
+    bResult = FileStream_Write(ha->pStream, &hf->RawFilePos, hf->SectorOffsets, dwSectorPosLen);
+    
+    // Not necessary, as the sector checksums
+    // are going to be freed when this is done.
+//  BSWAP_ARRAY32_UNSIGNED(hf->SectorOffsets, dwSectorPosLen);
 
     if(!bResult)
         return GetLastError();
@@ -999,7 +1002,10 @@ int WriteSectorChecksums(TMPQFile * hf)
     RawFilePos.QuadPart = hf->RawFilePos.QuadPart + hf->SectorOffsets[hf->dwSectorCount - 2];
     if(!FileStream_Write(ha->pStream, &RawFilePos, pbCompressed, dwCompressedSize))
         nError = GetLastError();
-    BSWAP_ARRAY32_UNSIGNED(hf->SectorChksums, dwCrcSize);
+
+    // Not necessary, as the sector checksums
+    // are going to be freed when this is done.
+//  BSWAP_ARRAY32_UNSIGNED(hf->SectorChksums, dwCrcSize);
 
     // Store the sector CRCs 
     hf->SectorOffsets[hf->dwSectorCount - 1] = hf->SectorOffsets[hf->dwSectorCount - 2] + dwCompressedSize;

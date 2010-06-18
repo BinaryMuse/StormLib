@@ -120,6 +120,7 @@ int SAttrLoadAttributes(TMPQArchive * ha)
         // Load the content of the attributes file
         dwToRead = sizeof(DWORD) + sizeof(DWORD);
         SFileReadFile(hFile, pAttr, dwToRead, &dwBytesRead, NULL);
+        BSWAP_ARRAY32_UNSIGNED(pAttr, dwBytesRead);
         if(dwBytesRead != dwToRead)
             nError = ERROR_FILE_CORRUPT;
 
@@ -135,6 +136,7 @@ int SAttrLoadAttributes(TMPQArchive * ha)
         {
             dwToRead = dwBlockTableSize * sizeof(DWORD);
             SFileReadFile(hFile, pAttr->pCrc32, dwToRead, &dwBytesRead, NULL);
+            BSWAP_ARRAY32_UNSIGNED(pAttr->pCrc32, dwBytesRead);
             if(dwBytesRead != dwToRead)
                 nError = ERROR_FILE_CORRUPT;
         }
@@ -144,6 +146,7 @@ int SAttrLoadAttributes(TMPQArchive * ha)
         {
             dwToRead = dwBlockTableSize * sizeof(TMPQFileTime);
             SFileReadFile(hFile, pAttr->pFileTime, dwToRead, &dwBytesRead, NULL);
+            BSWAP_ARRAY32_UNSIGNED(pAttr->pFileTime, dwBytesRead);
             if(dwBytesRead != dwToRead)
                 nError = ERROR_FILE_CORRUPT;
         }
@@ -223,21 +226,27 @@ int SAttrFileSaveToMpq(TMPQArchive * ha)
     if(nError == ERROR_SUCCESS)
     {
         dwToWrite = sizeof(DWORD) + sizeof(DWORD);
+        BSWAP_ARRAY32_UNSIGNED(pAttr, dwToWrite);
         nError = SFileAddFile_Write(hf, pAttr, dwToWrite, MPQ_COMPRESSION_ZLIB);
+        BSWAP_ARRAY32_UNSIGNED(pAttr, dwToWrite);
     }
 
     // Write the array of CRC32
     if(nError == ERROR_SUCCESS && (pAttr->dwFlags & MPQ_ATTRIBUTE_CRC32))
     {
         dwToWrite = dwFinalBlockTableSize * sizeof(DWORD);
+        BSWAP_ARRAY32_UNSIGNED(pAttr->pCrc32, dwToWrite);
         nError = SFileAddFile_Write(hf, pAttr->pCrc32, dwToWrite, MPQ_COMPRESSION_ZLIB);
+        BSWAP_ARRAY32_UNSIGNED(pAttr->pCrc32, dwToWrite);
     }
 
     // Write the array of file time
     if(nError == ERROR_SUCCESS && (pAttr->dwFlags & MPQ_ATTRIBUTE_FILETIME))
     {
         dwToWrite = dwFinalBlockTableSize * sizeof(TMPQFileTime);
+        BSWAP_ARRAY32_UNSIGNED(pAttr->pFileTime, dwToWrite);
         nError = SFileAddFile_Write(hf, pAttr->pFileTime, dwToWrite, MPQ_COMPRESSION_ZLIB);
+        BSWAP_ARRAY32_UNSIGNED(pAttr->pFileTime, dwToWrite);
     }
 
     // Write the array of MD5s

@@ -583,7 +583,7 @@ DWORD WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags
             if(dwBytesRead == 0)
             {
                 if(GetLastError() == ERROR_CHECKSUM_ERROR)
-                    dwVerifyResult |= VERIFY_ERROR_SECTOR_CHECKSUM;
+                    dwVerifyResult |= VERIFY_SECTOR_CHECKSUM_ERROR;
                 break;
             }
 
@@ -599,36 +599,51 @@ DWORD WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags
             dwTotalBytes -= dwBytesRead;
         }
 
-        // Check if total bytes loaded matches
-        if(dwTotalBytes != 0)
-            dwVerifyResult |= VERIFY_ERROR_READ_FILE;
+        // If the file has sector checksums, indicate it in the flags
+        if((hf->pBlock->dwFlags & MPQ_FILE_SECTOR_CRC) && hf->SectorChksums != NULL && hf->SectorChksums[0] != 0)
+            dwVerifyResult |= VERIFY_SECTORS_HAVE_CHECKSUM;
 
-        // Check if the CRC32 matches
-        if((dwFlags & MPQ_ATTRIBUTE_CRC32) && hf->pCrc32 != NULL)
+        // Check if the entire file has been read
+        // No point in checking CRC32 and MD5 if not
+        if(dwTotalBytes == 0)
         {
-            // Some files may have their CRC zeroed
-            if(hf->pCrc32[0] != 0 && dwCrc32 != hf->pCrc32[0])
-                dwVerifyResult |= VERIFY_ERROR_FILE_CHECKSUM;
-        }
-
-        // Check if MD5 matches
-        if((dwFlags & MPQ_ATTRIBUTE_MD5) && hf->pMd5 != NULL)
-        {
-            md5_done(&md5_state, Md5.Value);
-
-            // Some files have the MD5 zeroed. Don't check MD5 in that case
-            if(is_valid_md5(hf->pMd5->Value))
+            // Check if the CRC32 matches
+            if((dwFlags & MPQ_ATTRIBUTE_CRC32) && hf->pCrc32 != NULL)
             {
-                if(memcmp(Md5.Value, hf->pMd5->Value, sizeof(TMPQMD5)))
-                    dwVerifyResult |= VERIFY_ERROR_FILE_MD5;
+                // Some files may have their CRC zeroed
+                if(hf->pCrc32[0] != 0)
+                {
+                    dwVerifyResult |= VERIFY_FILE_HAS_CHECKSUM;
+                    if(dwCrc32 != hf->pCrc32[0])
+                        dwVerifyResult |= VERIFY_FILE_CHECKSUM_ERROR;
+                }
             }
+
+            // Check if MD5 matches
+            if((dwFlags & MPQ_ATTRIBUTE_MD5) && hf->pMd5 != NULL)
+            {
+                md5_done(&md5_state, Md5.Value);
+
+                // Some files have the MD5 zeroed. Don't check MD5 in that case
+                if(is_valid_md5(hf->pMd5->Value))
+                {
+                    dwVerifyResult |= VERIFY_FILE_HAS_MD5;
+                    if(memcmp(Md5.Value, hf->pMd5->Value, sizeof(TMPQMD5)))
+                        dwVerifyResult |= VERIFY_FILE_MD5_ERROR;
+                }
+            }
+        }
+        else
+        {
+            dwVerifyResult |= VERIFY_READ_ERROR;
         }
 
         SFileCloseFile(hFile);
     }
     else
     {
-        dwVerifyResult |= VERIFY_ERROR_OPEN_FILE;
+        // Remember that the file couldn't be open
+        dwVerifyResult |= VERIFY_OPEN_ERROR;
     }
 
     return dwVerifyResult;

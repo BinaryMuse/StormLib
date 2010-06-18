@@ -16,15 +16,12 @@ bool WINAPI SFileExtractFile(HANDLE hMpq, const char * szToExtract, const char *
 {
     TFileStream * pLocalFile = NULL;
     HANDLE hMpqFile = NULL;
-    DWORD dwSearchScope = SFILE_OPEN_FROM_MPQ;
     int nError = ERROR_SUCCESS;
 
     // Open the MPQ file
     if(nError == ERROR_SUCCESS)
     {
-        if((DWORD_PTR)szToExtract <= 0x10000)
-            dwSearchScope = SFILE_OPEN_BY_INDEX;
-        if(!SFileOpenFileEx(hMpq, szToExtract, dwSearchScope, &hMpqFile))
+        if(!SFileOpenFileEx(hMpq, szToExtract, SFILE_OPEN_FROM_MPQ, &hMpqFile))
             nError = GetLastError();
     }
 

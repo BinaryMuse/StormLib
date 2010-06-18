@@ -258,11 +258,14 @@
 #define MPQ_OPEN_ALWAYS              0x0004 // Creates empty MPQ  Converts to MPQ    Opens the MPQ
 
 // Constants for SFileVerifyFile
-#define VERIFY_ERROR_OPEN_FILE       0x0001 // Failed to open the file
-#define VERIFY_ERROR_READ_FILE       0x0002 // Failed to read all data from the file
-#define VERIFY_ERROR_SECTOR_CHECKSUM 0x0004 // Sector checksum verification failed
-#define VERIFY_ERROR_FILE_CHECKSUM   0x0008 // File checksum verification failed
-#define VERIFY_ERROR_FILE_MD5        0x0010 // File MD5 verification failed
+#define VERIFY_OPEN_ERROR            0x0001 // Failed to open the file
+#define VERIFY_READ_ERROR            0x0002 // Failed to read all data from the file
+#define VERIFY_SECTORS_HAVE_CHECKSUM 0x0004 // Sector checksum is available for the file
+#define VERIFY_SECTOR_CHECKSUM_ERROR 0x0008 // Sector checksum doesn't match
+#define VERIFY_FILE_HAS_CHECKSUM     0x0010 // File CRC32 is available for the file
+#define VERIFY_FILE_CHECKSUM_ERROR   0x0020 // File CRC32 doesn't match
+#define VERIFY_FILE_HAS_MD5          0x0040 // File MD5 is available for the file
+#define VERIFY_FILE_MD5_ERROR        0x0080 // File MD5 doesn't match
 
 // Constants for SFileVerifyArchive
 #define ERROR_NO_SIGNATURE                0 // There is no signature in the MPQ
