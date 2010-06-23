@@ -599,7 +599,7 @@ static bool File_GetSize(
 #endif
 
 #ifdef PLATFORM_MAC
-	SInt64 fileLength = 0;
+    SInt64 fileLength = 0;
     OSErr theErr;
 
     theErr = FSGetForkSize((short)(long)pStream->hFile, &fileLength);
@@ -652,7 +652,7 @@ static bool File_SetSize(
         return bResult;
     }
 #endif
-    
+
 #ifdef PLATFORM_MAC
     {
         OSErr theErr;
@@ -676,7 +676,7 @@ static bool File_SetSize(
             return false;
         }
 
-        return false;
+        return true;
     }
 #endif
 }
