@@ -1,6 +1,6 @@
 project(StormLib)
 cmake_minimum_required(VERSION 2.6)
-SET (SRC_FILES
+set(SRC_FILES
            src/adpcm/adpcm.cpp
            src/huffman/huff.cpp
            src/sparse/sparse.cpp
@@ -206,47 +206,54 @@ SET (SRC_FILES
            src/pklib/implode.c
 )
 
-set(CMAKE_C_FLAGS "-D_7ZIP_ST")
+set(ZLIB_BZIP2_FILES
+           src/bzip2/blocksort.c
+           src/bzip2/bzlib.c
+           src/bzip2/compress.c
+           src/bzip2/crctable.c
+           src/bzip2/decompress.c
+           src/bzip2/huffman.c
+           src/bzip2/randtable.c
+           src/zlib/adler32.c
+           src/zlib/compress2.c
+           src/zlib/crc32.c
+           src/zlib/deflate.c
+           src/zlib/inffast.c
+           src/zlib/inflate.c
+           src/zlib/inftrees.c
+           src/zlib/trees.c
+           src/zlib/zutil.c
+)
+
+set(TEST_SRC_FILES
+           test/Test.cpp
+)
+
+set(CMAKE_C_FLAGS "-D_7ZIP_ST -DBZ_STRICT_ANSI")
 
 if(WIN32)
     if(MSVC)
-        message(STATUS "using MSVC")
+        message(STATUS "Using MSVC")
         set(CMAKE_C_FLAGS "-D_7ZIP_ST -DWIN32")
     else()
-        message(STATUS "using mingw")
+        message(STATUS "Using mingw")
     endif()
-    set(SRC_ADDITIONAL_FILES
-       src/bzip2/blocksort.c
-       src/bzip2/bzlib.c
-       src/bzip2/compress.c
-       src/bzip2/crctable.c
-       src/bzip2/decompress.c
-       src/bzip2/huffman.c
-       src/bzip2/randtable.c
-       src/zlib/adler32.c
-       src/zlib/compress2.c
-       src/zlib/crc32.c
-       src/zlib/deflate.c
-       src/zlib/inffast.c
-       src/zlib/inflate.c
-       src/zlib/inftrees.c
-       src/zlib/trees.c
-       src/zlib/zutil.c
-    )
+    set(SRC_ADDITIONAL_FILES ${ZLIB_BZIP2_FILES})
 endif()
 
 if(APPLE)
-    message(STATUS "using Mac OS X port")
+    message(STATUS "Using Mac OS X port")
     set(LINK_FLAGS "-lz -lbz2 -framework Carbon")
     set(PUBLIC_HEADERS src/StormLib.h src/StormPort.h)
 endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-    message(STATUS "using Linux port")
+    message(STATUS "Using Linux port")
     set(LINK_FLAGS "-lz -lbz2")
 endif()
 
 add_library(StormLib SHARED ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
+add_executable(StormLib_test.exe ${SRC_FILES} ${ZLIB_BZIP2_FILES} ${TEST_SRC_FILES})
 
 if(APPLE)
     set_target_properties(StormLib PROPERTIES FRAMEWORK true LINK_FLAGS "${LINK_FLAGS}")

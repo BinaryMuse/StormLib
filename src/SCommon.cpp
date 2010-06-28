@@ -831,19 +831,19 @@ int AllocateSectorOffsets(TMPQFile * hf, bool bLoadFromFile)
 
                 // Decrypt sector positions
                 DecryptMpqBlock(hf->SectorOffsets, dwArraySize, hf->dwFileKey - 1);
+            }
 
-                //
-                // Check if the sector positions are correctly decrypted
-                // I saw a protector who puts negative offset into the sector offset table.
-                // Because there are always at least 2 sector positions, we can check their difference
-                //
+            //
+            // Check if the sector positions are correct.
+            // I saw a protector who puts negative offset into the sector offset table.
+            // Because there are always at least 2 sector positions, we can check their difference
+            //
 
-                if((hf->SectorOffsets[1] - hf->SectorOffsets[0]) > ha->dwSectorSize)
-                {
-                    FREEMEM(hf->SectorOffsets);
-                    hf->SectorOffsets = NULL;
-                    return ERROR_FILE_CORRUPT;
-                }
+            if((hf->SectorOffsets[1] - hf->SectorOffsets[0]) > ha->dwSectorSize)
+            {
+                FREEMEM(hf->SectorOffsets);
+                hf->SectorOffsets = NULL;
+                return ERROR_FILE_CORRUPT;
             }
         }
         else

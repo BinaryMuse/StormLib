@@ -451,7 +451,6 @@ static int CopyMpqFiles(TMPQArchive * ha, DWORD * pFileKeys, TFileStream * pNewS
     TMPQBlock * pBlockEnd = ha->pBlockTable + ha->pHeader->dwBlockTableSize;
     TMPQBlock * pBlock;
     TMPQFile * hf = NULL;
-    DWORD dwBlockIndex = 0;
     int nError = ERROR_SUCCESS;
 
     // Walk through all files and write them to the destination MPQ archive
@@ -476,7 +475,7 @@ static int CopyMpqFiles(TMPQArchive * ha, DWORD * pFileKeys, TFileStream * pNewS
             hf->RawFilePos.QuadPart = ha->MpqPos.QuadPart + hf->MpqFilePos.LowPart;
 
             // Set the file decryption key
-            hf->dwFileKey = pFileKeys[dwBlockIndex++];
+            hf->dwFileKey = pFileKeys[pBlock - ha->pBlockTable];
 
             // Allocate buffers for file sector and sector offset table
             nError = AllocateSectorBuffer(hf);

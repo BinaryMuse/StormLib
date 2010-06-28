@@ -16,6 +16,7 @@ zip.exe -u9  ..\WWW\web\download\stormlib.zip StormLib\*.sln
 zip.exe -u9  ..\WWW\web\download\stormlib.zip StormLib\*.vcproj
 zip.exe -u9  ..\WWW\web\download\stormlib.zip StormLib\*.plist
 zip.exe -u9  ..\WWW\web\download\stormlib.zip StormLib\*.txt
+zip.exe -u9  ..\WWW\web\download\stormlib.zip StormLib\*.kdev4
 echo.
 
 echo Press any key to exit ...
