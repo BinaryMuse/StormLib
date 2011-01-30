@@ -10,38 +10,11 @@
 
 #define __STORMLIB_SELF__
 #include "StormLib.h"
-#include "SCommon.h"
+#include "StormCommon.h"
 
 /*****************************************************************************/
 /* Local functions                                                           */
 /*****************************************************************************/
-
-// Is it a pseudo-name ("FileXXXXXXXX.ext") ?
-static bool IsPseudoFileName(const char * szFileName, DWORD * pdwFileIndex)
-{
-    const char * szExt = strrchr(szFileName, '.');
-
-    // Must have an extension
-    if(szExt != NULL)
-    {
-        // Length of the name part must be 12 characters
-        if((szExt - szFileName) == 12)
-        {
-            // Must begin with "File"
-            if(!_strnicmp(szFileName, "File", 4))
-            {
-                // Must be 8 digits after "File"
-                if(isdigit(szFileName[4]) && isdigit(szFileName[11]))
-                {
-                    *pdwFileIndex = strtol(szFileName + 4, (char **)&szExt, 10);
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
 
 static bool OpenLocalFile(const char * szFileName, HANDLE * phFile)
 {
@@ -52,7 +25,7 @@ static bool OpenLocalFile(const char * szFileName, HANDLE * phFile)
     if(pStream != NULL)
     {
         // Allocate and initialize file handle
-        hf = CreateMpqFile(NULL, szFileName);
+        hf = CreateMpqFile(NULL);
         if(hf != NULL)
         {
             hf->pStream = pStream;
@@ -69,6 +42,104 @@ static bool OpenLocalFile(const char * szFileName, HANDLE * phFile)
     return false;
 }
 
+bool OpenPatchedFile(HANDLE hMpq, const char * szFileName, DWORD dwReserved, HANDLE * phFile)
+{
+    TMPQArchive * ha = (TMPQArchive *)hMpq;
+    TMPQFile * hfPatch;                     // Pointer to patch file
+    TMPQFile * hfBase = NULL;               // Pointer to base open file
+    TMPQFile * hfLast;                      // The highest file in the chain that is not patch file
+    TMPQFile * hf;
+    HANDLE hPatchFile;
+    char szPatchFileName[MAX_PATH];
+
+    // Keep this flag here for future updates
+    dwReserved = dwReserved;
+
+    // First of all, try to open the original version of the file in any of the patch chain
+    while(ha != NULL)
+    {
+        // Construct the name of the patch file
+        strcpy(szPatchFileName, ha->szPatchPrefix);
+        strcat(szPatchFileName, szFileName);
+        if(SFileOpenFileEx((HANDLE)ha, szPatchFileName, SFILE_OPEN_FROM_MPQ, (HANDLE *)&hfBase))
+        {
+            //
+            // The following scenario is possible:
+            // 1) Base MPQ file doesn't contain the desired file
+            // 2) First patch MPQ contains the file with MPQ_FILE_PATCH_FILE
+            // 3) Second patch contains full version of the file   
+            //
+
+            break;
+        }
+
+        // Move to the next file in the patch chain
+        ha = ha->haPatch;
+    }
+
+    // If we couldn't find the file in any of the patches, it doesn't exist
+    hf = hfLast = hfBase;
+    if(hf == NULL)
+    {
+        SetLastError(ERROR_FILE_NOT_FOUND);
+        return false;
+    }
+
+    // At this point, we require that the open file is not a patch
+    if(hf->pFileEntry->dwFlags & MPQ_FILE_PATCH_FILE)
+    {
+        FreeMPQFile(hf);
+        SetLastError(ERROR_BASE_FILE_MISSING);
+        return false;
+    }
+    
+    // Move to the patch MPQ
+    ha = ha->haPatch;
+
+    // Now keep going in the patch chain and open every patch file that is there
+    while(ha != NULL)
+    {
+        // Construct patch file name
+        strcpy(szPatchFileName, ha->szPatchPrefix);
+        strcat(szPatchFileName, szFileName);
+        if(SFileOpenFileEx((HANDLE)ha, szPatchFileName, SFILE_OPEN_FROM_MPQ, &hPatchFile))
+        {
+            // Remember the new version
+            hfPatch = (TMPQFile *)hPatchFile;
+
+            // If we encountered a full replacement of the file, 
+            // we have to remember the highest full file
+            if((hfPatch->pFileEntry->dwFlags & MPQ_FILE_PATCH_FILE) == 0)
+                hfLast = hfPatch;
+
+            // Set current patch to base file and move on
+            hf->hfPatchFile = hfPatch;
+            hf = hfPatch;
+        }
+
+        // Move to the next patch in the chain
+        ha = ha->haPatch;
+    }
+
+    // Now we need to free all files that are below the highest unpatched version
+    while(hfBase != hfLast)
+    {
+        TMPQFile * hfNext = hfBase->hfPatchFile;
+
+        // Free the file below
+        hfBase->hfPatchFile = NULL;
+        FreeMPQFile(hfBase);
+
+        // Move the base to the next file
+        hfBase = hfNext;
+    }
+
+    // Give the updated base MPQ
+    if(phFile != NULL)
+        *phFile = (HANDLE)hfBase;
+    return true;
+}
+
 /*****************************************************************************/
 /* Public functions                                                          */
 /*****************************************************************************/
@@ -83,7 +154,7 @@ int WINAPI SFileEnumLocales(
     HANDLE hMpq,
     const char * szFileName,
     LCID * plcLocales,
-    DWORD * pdwMaxLocales,
+    LPDWORD pdwMaxLocales,
     DWORD dwSearchScope)
 {
     TMPQArchive * ha = (TMPQArchive *)hMpq;
@@ -114,9 +185,9 @@ int WINAPI SFileEnumLocales(
     else
     {
         // For nameless access, always return 1 locale
-        pHash = GetHashEntryByIndex(ha, (DWORD)(DWORD_PTR)szFileName);
-        if(pHash != NULL)
-            dwLocales++;
+//      pHash = GetFileEntryByIndex(ha, (DWORD)(DWORD_PTR)szFileName);
+//      if(pHash != NULL)
+//          dwLocales++;
     }
 
     // Test if there is enough space to copy the locales
@@ -139,9 +210,9 @@ int WINAPI SFileEnumLocales(
     else
     {
         // For nameless access, always return 1 locale
-        pHash = GetHashEntryByIndex(ha, (DWORD)(DWORD_PTR)szFileName);
-        if(pHash != NULL)
-            *plcLocales++ = pHash->lcLocale;
+//      pHash = GetFileEntryByIndex(ha, (DWORD)(DWORD_PTR)szFileName);
+//      if(pHash != NULL)
+//          *plcLocales++ = pHash->lcLocale;
     }
 
     // Give the caller the total number of found locales
@@ -168,7 +239,7 @@ bool WINAPI SFileHasFile(HANDLE hMpq, const char * szFileName)
     // Prepare the file opening
     if(nError == ERROR_SUCCESS)
     {
-        if(GetHashEntryLocale(ha, szFileName, lcFileLocale) == NULL)
+        if(GetFileEntryLocale(ha, szFileName, lcFileLocale) == NULL)
         {
             nError = ERROR_FILE_NOT_FOUND;
         }
@@ -192,13 +263,9 @@ bool WINAPI SFileHasFile(HANDLE hMpq, const char * szFileName)
 bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearchScope, HANDLE * phFile)
 {
     TMPQArchive * ha = (TMPQArchive *)hMpq;
+    TFileEntry  * pFileEntry = NULL;
     TMPQFile    * hf = NULL;
-    TMPQHash    * pHash = NULL;         // Hash table index
-    TMPQBlock   * pBlock = NULL;        // File block
-    TMPQBlockEx * pBlockEx = NULL;
-    DWORD dwHashIndex  = 0;             // Hash table index
-    DWORD dwBlockIndex = (DWORD)-1;     // Found table index
-    size_t nHandleSize = 0;             // Memory space necessary to allocate TMPQHandle
+    DWORD dwBlockIndex = 0;             // Found table index
     int nError = ERROR_SUCCESS;
 
     // Don't accept NULL pointer to file handle
@@ -210,6 +277,11 @@ bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearch
     {
         switch(dwSearchScope)
         {
+            case SFILE_OPEN_PATCHED_FILE:
+
+                // We want to open the updated version of the file
+                return OpenPatchedFile(hMpq, szFileName, 0, phFile);
+
             case SFILE_OPEN_FROM_MPQ:
                 
                 if(!IsValidMpqHandle(ha))
@@ -225,12 +297,9 @@ bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearch
                 }
 
                 // First of all, check the name as-is
-                pHash = GetHashEntryLocale(ha, szFileName, lcFileLocale);
-                if(pHash != NULL)
-                {
-                    nHandleSize = sizeof(TMPQFile) + strlen(szFileName);
+                pFileEntry = GetFileEntryLocale(ha, szFileName, lcFileLocale);
+                if(pFileEntry != NULL)
                     break;
-                }
 
                 // If the file doesn't exist in the MPQ, check file pseudo-name ("FileXXXXXXXX.ext")
                 if(!IsPseudoFileName(szFileName, &dwBlockIndex))
@@ -253,9 +322,8 @@ bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearch
                 }
 
                 // Set handle size to be sizeof(TMPQFile) + length of FileXXXXXXXX.xxx
-                nHandleSize = sizeof(TMPQFile) + 20;
-                pHash = GetHashEntryByIndex(ha, (DWORD)(DWORD_PTR)szFileName);
-                if(pHash == NULL)
+                pFileEntry = GetFileEntryByIndex(ha, (DWORD)(DWORD_PTR)szFileName);
+                if(pFileEntry == NULL)
                     nError = ERROR_FILE_NOT_FOUND;
                 break;
 
@@ -265,9 +333,8 @@ bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearch
                 // No argument validation. Tries to open file with neutral locale first,
                 // then any other available.
                 dwSearchScope = SFILE_OPEN_FROM_MPQ;
-                nHandleSize = sizeof(TMPQFile) + strlen(szFileName);
-                pHash = GetHashEntryAny(ha, szFileName);
-                if(pHash == NULL)
+                pFileEntry = GetFileEntryAny(ha, szFileName);
+                if(pFileEntry == NULL)
                     nError = ERROR_FILE_NOT_FOUND;
                 break;
 
@@ -296,54 +363,33 @@ bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearch
         }
     }
 
-    // Get block index from file name and test it
+    // Test if the file was not already deleted.
     if(nError == ERROR_SUCCESS)
     {
-        dwHashIndex  = (DWORD)(pHash - ha->pHashTable);
-        dwBlockIndex = pHash->dwBlockIndex;
-
-        // If index was not found, or is greater than number of files, exit.
-        // This also covers the deleted files and free entries
-        if(dwBlockIndex > ha->pHeader->dwBlockTableSize)
+        if((pFileEntry->dwFlags & MPQ_FILE_EXISTS) == 0)
             nError = ERROR_FILE_NOT_FOUND;
-    }
-
-    // Get block and test if the file was not already deleted.
-    if(nError == ERROR_SUCCESS)
-    {
-        // Get both block tables and file position
-        pBlockEx = ha->pExtBlockTable + dwBlockIndex;
-        pBlock = ha->pBlockTable + dwBlockIndex;
-
-        if((pBlock->dwFlags & MPQ_FILE_EXISTS) == 0)
-            nError = ERROR_FILE_NOT_FOUND;
-        if(pBlock->dwFlags & ~MPQ_FILE_VALID_FLAGS)
+        if(pFileEntry->dwFlags & ~MPQ_FILE_VALID_FLAGS)
             nError = ERROR_NOT_SUPPORTED;
     }
 
     // Allocate file handle
     if(nError == ERROR_SUCCESS)
     {
-        if((hf = (TMPQFile *)ALLOCMEM(char, nHandleSize)) == NULL)
+        if((hf = ALLOCMEM(TMPQFile, 1)) == NULL)
             nError = ERROR_NOT_ENOUGH_MEMORY;
     }
 
     // Initialize file handle
     if(nError == ERROR_SUCCESS)
     {
-        memset(hf, 0, nHandleSize);
-        hf->ha       = ha;
-        hf->pBlockEx = pBlockEx;
-        hf->pBlock   = pBlock;
-        hf->pHash    = pHash;
-        hf->dwMagic  = ID_MPQ_FILE;
-        
-        hf->MpqFilePos.HighPart = pBlockEx->wFilePosHigh;
-        hf->MpqFilePos.LowPart  = pBlock->dwFilePos;
-        hf->RawFilePos.QuadPart = hf->MpqFilePos.QuadPart + ha->MpqPos.QuadPart;
+        memset(hf, 0, sizeof(TMPQFile));
+        hf->pFileEntry = pFileEntry;
+        hf->dwMagic = ID_MPQ_FILE;
+        hf->ha = ha;
 
-        hf->dwHashIndex  = dwHashIndex;
-        hf->dwBlockIndex = dwBlockIndex; 
+        hf->MpqFilePos   = pFileEntry->ByteOffset;
+        hf->RawFilePos   = ha->MpqPos + hf->MpqFilePos;
+        hf->dwDataSize   = pFileEntry->dwFileSize;
 
         // If the MPQ has sector CRC enabled, enable if for the file
         if(ha->dwFlags & MPQ_FLAG_CHECK_SECTOR_CRC)
@@ -352,34 +398,27 @@ bool WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearch
         // Decrypt file key. Cannot be used if the file is given by index
         if(dwSearchScope == SFILE_OPEN_FROM_MPQ)
         {
-            strcpy(hf->szFileName, szFileName);
-            if(hf->pBlock->dwFlags & MPQ_FILE_ENCRYPTED)
+            if(pFileEntry->dwFlags & MPQ_FILE_ENCRYPTED)
             {
-                szFileName = GetPlainMpqFileName(szFileName);
-                hf->dwFileKey = DecryptFileKey(szFileName);
-                if(hf->pBlock->dwFlags & MPQ_FILE_FIX_KEY)
-                {
-                    hf->dwFileKey = (hf->dwFileKey + hf->pBlock->dwFilePos) ^ hf->pBlock->dwFSize;
-                }
+                hf->dwFileKey = DecryptFileKey(szFileName,
+                                               pFileEntry->ByteOffset,
+                                               pFileEntry->dwFileSize,
+                                               pFileEntry->dwFlags);
             }
         }
         else
         {
             // If the file is encrypted and not compressed, we cannot detect the file key
-            if(!SFileGetFileName(hf, hf->szFileName))
+            if(!SFileGetFileName(hf, NULL))
                 nError = GetLastError();
         }
     }
 
-    // Resolve pointers to file's attributes
-    if(nError == ERROR_SUCCESS && ha->pAttributes != NULL)
+    // If the file is actually a patch file, we have to load the patch file header
+    if(nError == ERROR_SUCCESS && pFileEntry->dwFlags & MPQ_FILE_PATCH_FILE)
     {
-        if(ha->pAttributes->pCrc32 != NULL)
-            hf->pCrc32 = ha->pAttributes->pCrc32 + dwBlockIndex;
-        if(ha->pAttributes->pFileTime != NULL)
-            hf->pFileTime = ha->pAttributes->pFileTime + dwBlockIndex;
-        if(ha->pAttributes->pMd5 != NULL)
-            hf->pMd5 = ha->pAttributes->pMd5 + dwBlockIndex;
+        assert(hf->pPatchInfo == NULL);
+        nError = AllocatePatchInfo(hf, true);
     }
 
     // Cleanup

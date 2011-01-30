@@ -1,6 +1,6 @@
 ;
 ; Export file for Windows
-; Copyright (c) 2007 Ladislav Zezula
+; Copyright (c) 2007-2010 Ladislav Zezula
 ; ladik@zezula.net
 ;
 
@@ -8,12 +8,13 @@ LIBRARY StormLib.dll
 
 EXPORTS
 
-    SFileOpenArchive
-    SFileCreateArchive
-    SFileCreateArchiveEx
-
+    SFileGetGlobalFlags
+    SFileSetGlobalFlags
     SFileSetLocale
     SFileGetLocale
+
+    SFileOpenArchive
+    SFileCreateArchive
     SFileFlushArchive
     SFileCloseArchive
 
@@ -22,12 +23,14 @@ EXPORTS
     SFileSetCompactCallback
     SFileCompactArchive
     
-    SFileSetHashTableSize    
+    SFileSetMaxFileCount    
     
-    SFileCreateAttributes
     SFileGetAttributes
     SFileSetAttributes
     SFileUpdateFileAttributes
+
+    SFileOpenPatchArchive
+    SFileIsPatchedArchive
     
     SFileOpenFileEx
     SFileGetFileSize

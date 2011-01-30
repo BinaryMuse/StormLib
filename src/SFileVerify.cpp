@@ -17,7 +17,7 @@
 #define __INCLUDE_COMPRESSION__
 #define __INCLUDE_CRYPTOGRAPHY__
 #include "StormLib.h"
-#include "SCommon.h"
+#include "StormCommon.h"
 
 //-----------------------------------------------------------------------------
 // Local defines
@@ -26,18 +26,15 @@
 #define SIGNATURE_TYPE_WEAK             1
 #define SIGNATURE_TYPE_STRONG           2
 
-#define MPQ_WEAK_SIGNATURE_SIZE        64
-#define MPQ_STRONG_SIGNATURE_SIZE     256 
-
 #define MPQ_DIGEST_UNIT_SIZE      0x10000
 
 typedef struct _MPQ_SIGNATURE_INFO
 {
-    LARGE_INTEGER BeginMpqData;             // File offset where the hashing starts
-    LARGE_INTEGER BeginExclude;             // Begin of the excluded area (used for (signature) file)
-    LARGE_INTEGER EndExclude;               // End of the excluded area (used for (signature) file)
-    LARGE_INTEGER EndMpqData;               // File offset where the hashing ends
-    LARGE_INTEGER EndOfFile;                // Size of the entire file
+    ULONGLONG BeginMpqData;                 // File offset where the hashing starts
+    ULONGLONG BeginExclude;                 // Begin of the excluded area (used for (signature) file)
+    ULONGLONG EndExclude;                   // End of the excluded area (used for (signature) file)
+    ULONGLONG EndMpqData;                   // File offset where the hashing ends
+    ULONGLONG EndOfFile;                    // Size of the entire file
     BYTE  Signature[MPQ_STRONG_SIGNATURE_SIZE + 0x10];
     DWORD cbSignatureSize;                  // Length of the signature
     int nSignatureType;                     // See SIGNATURE_TYPE_XXX
@@ -130,10 +127,10 @@ static bool is_valid_md5(void * pvMd5)
     unsigned char ByteSum = 0;
     int i;
 
-    for(i = 0; i < 0x10; i++)
+    for(i = 0; i < MD5_DIGEST_SIZE; i++)
         ByteSum |= pbMd5[i];
 
-    return (ByteSum != 0) ? true : false;
+    return ByteSum ? true : false;
 }
 
 static bool decode_base64_key(const char * szKeyBase64, rsa_key * key)
@@ -167,22 +164,22 @@ static void CalculateArchiveRange(
     TMPQArchive * ha,
     PMPQ_SIGNATURE_INFO pSI)
 {
-    LARGE_INTEGER TempPos;
-    LARGE_INTEGER MaxPos;
+    TMPQHeader * pHeader = ha->pHeader;
+    ULONGLONG TempPos = 0;
+    ULONGLONG MaxPos;
     char szMapHeader[0x200];
 
     // Get the MPQ begin
-    pSI->BeginMpqData.QuadPart = ha->MpqPos.QuadPart;
+    pSI->BeginMpqData = ha->MpqPos;
 
     // Warcraft III maps are signed from the map header to the end
-    TempPos.QuadPart = 0;
     if(FileStream_Read(ha->pStream, &TempPos, szMapHeader, sizeof(szMapHeader)))
     {
         // Is it a map header ?
         if(szMapHeader[0] == 'H' && szMapHeader[1] == 'M' && szMapHeader[2] == '3' && szMapHeader[3] == 'W')
         {
             // We will have to hash since the map header
-            pSI->BeginMpqData.QuadPart = 0;
+            pSI->BeginMpqData = 0;
         }
     }
 
@@ -192,35 +189,35 @@ static void CalculateArchiveRange(
     FindFreeMpqSpace(ha, &MaxPos);
 
     // Check if hash table is beyond
-    TempPos.QuadPart = ha->HashTablePos.QuadPart + (ha->pHeader->dwHashTableSize * sizeof(TMPQHash));
-    if(TempPos.QuadPart > MaxPos.QuadPart)
-        MaxPos.QuadPart = TempPos.QuadPart;
+    TempPos = ha->MpqPos + MAKE_OFFSET64(pHeader->wHashTablePosHi, pHeader->dwHashTablePos) + pHeader->HashTableSize64;
+    if(TempPos > MaxPos)
+        MaxPos = TempPos;
 
     // Check if block table is beyond
-    TempPos.QuadPart = ha->BlockTablePos.QuadPart + (ha->pHeader->dwBlockTableSize * sizeof(TMPQBlock));
-    if(TempPos.QuadPart > MaxPos.QuadPart)
-        MaxPos.QuadPart = TempPos.QuadPart;
+    TempPos = ha->MpqPos + MAKE_OFFSET64(pHeader->wBlockTablePosHi, pHeader->dwBlockTablePos) + pHeader->BlockTableSize64;
+    if(TempPos > MaxPos)
+        MaxPos = TempPos;
 
     // Check if ext block table is beyond
-    if(ha->ExtBlockTablePos.QuadPart != 0)
+    if(pHeader->HiBlockTablePos64 != 0)
     {
-        TempPos.QuadPart = ha->ExtBlockTablePos.QuadPart + (ha->pHeader->dwBlockTableSize * sizeof(TMPQBlockEx));
-        if(TempPos.QuadPart > MaxPos.QuadPart)
-            MaxPos.QuadPart = TempPos.QuadPart;
+        TempPos = ha->MpqPos + pHeader->HiBlockTablePos64 + pHeader->HiBlockTableSize64;
+        if(TempPos > MaxPos)
+            MaxPos = TempPos;
     }
 
     // Give the end
-    pSI->EndMpqData.QuadPart = TempPos.QuadPart;
+    pSI->EndMpqData = MaxPos;
 
     // Get the size of the entire file
-    FileStream_GetSize(ha->pStream, &pSI->EndOfFile);
+    FileStream_GetSize(ha->pStream, pSI->EndOfFile);
 }
 
 static bool QueryMpqSignatureInfo(
     TMPQArchive * ha,
     PMPQ_SIGNATURE_INFO pSI)
 {
-    LARGE_INTEGER ExtraBytes;
+    ULONGLONG ExtraBytes;
     TMPQFile * hf;
     HANDLE hFile;
     DWORD dwFileSize;
@@ -238,9 +235,9 @@ static bool QueryMpqSignatureInfo(
         hf = (TMPQFile *)hFile;
 
         // We have to exclude the signature file from the digest
-        pSI->BeginExclude.QuadPart = ha->MpqPos.QuadPart + hf->pBlock->dwFilePos;
-        pSI->EndExclude.QuadPart = pSI->BeginExclude.QuadPart + hf->pBlock->dwCSize;
-        dwFileSize = hf->pBlock->dwFSize;
+        pSI->BeginExclude = ha->MpqPos + hf->pFileEntry->ByteOffset;
+        pSI->EndExclude = pSI->BeginExclude + hf->pFileEntry->dwCmpSize;
+        dwFileSize = hf->dwDataSize;
 
         // Close the file
         SFileCloseFile(hFile);
@@ -250,8 +247,8 @@ static bool QueryMpqSignatureInfo(
 
     // If there is extra bytes beyond the end of the archive,
     // it's the strong signature
-    ExtraBytes.QuadPart = pSI->EndOfFile.QuadPart - pSI->EndMpqData.QuadPart;
-    if(ExtraBytes.HighPart == 0 && ExtraBytes.LowPart >= (MPQ_STRONG_SIGNATURE_SIZE + 4))
+    ExtraBytes = pSI->EndOfFile - pSI->EndMpqData;
+    if(ExtraBytes >= (MPQ_STRONG_SIGNATURE_SIZE + 4))
     {
         // Read the strong signature
         if(!FileStream_Read(ha->pStream, &pSI->EndMpqData, pSI->Signature, (MPQ_STRONG_SIGNATURE_SIZE + 4)))
@@ -272,11 +269,11 @@ static bool QueryMpqSignatureInfo(
 static bool CalculateMpqHashMd5(
     TMPQArchive * ha,
     PMPQ_SIGNATURE_INFO pSI,
-    BYTE * pMd5Digest)
+    LPBYTE pMd5Digest)
 {
-    LARGE_INTEGER BeginBuffer;
-    LARGE_INTEGER EndBuffer;
     hash_state md5_state;
+    ULONGLONG BeginBuffer;
+    ULONGLONG EndBuffer;
     LPBYTE pbDigestBuffer = NULL;
 
     // Allocate buffer for creating the MPQ digest.
@@ -293,15 +290,15 @@ static bool CalculateMpqHashMd5(
     // Create the digest
     for(;;)
     {
-        LARGE_INTEGER BytesRemaining;
+        ULONGLONG BytesRemaining;
         LPBYTE pbSigBegin = NULL;
         LPBYTE pbSigEnd = NULL;
         DWORD dwToRead = MPQ_DIGEST_UNIT_SIZE;
 
         // Check the number of bytes remaining
-        BytesRemaining.QuadPart = pSI->EndMpqData.QuadPart - BeginBuffer.QuadPart;
-        if(BytesRemaining.QuadPart < MPQ_DIGEST_UNIT_SIZE)
-            dwToRead = BytesRemaining.LowPart;
+        BytesRemaining = pSI->EndMpqData - BeginBuffer;
+        if(BytesRemaining < MPQ_DIGEST_UNIT_SIZE)
+            dwToRead = (DWORD)BytesRemaining;
         if(dwToRead == 0)
             break;
 
@@ -313,13 +310,13 @@ static bool CalculateMpqHashMd5(
         }
 
         // Move the current byte offset
-        EndBuffer.QuadPart = BeginBuffer.QuadPart + dwToRead;
+        EndBuffer = BeginBuffer + dwToRead;
 
         // Check if the signature is within the loaded digest
-        if(BeginBuffer.QuadPart <= pSI->BeginExclude.QuadPart && pSI->BeginExclude.QuadPart < EndBuffer.QuadPart)
-            pbSigBegin = pbDigestBuffer + (size_t)(pSI->BeginExclude.QuadPart - BeginBuffer.QuadPart);
-        if(BeginBuffer.QuadPart <= pSI->EndExclude.QuadPart && pSI->EndExclude.QuadPart < EndBuffer.QuadPart)
-            pbSigEnd = pbDigestBuffer + (size_t)(pSI->EndExclude.QuadPart - BeginBuffer.QuadPart);
+        if(BeginBuffer <= pSI->BeginExclude && pSI->BeginExclude < EndBuffer)
+            pbSigBegin = pbDigestBuffer + (size_t)(pSI->BeginExclude - BeginBuffer);
+        if(BeginBuffer <= pSI->EndExclude && pSI->EndExclude < EndBuffer)
+            pbSigEnd = pbDigestBuffer + (size_t)(pSI->EndExclude - BeginBuffer);
 
         // Zero the part that belongs to the signature
         if(pbSigBegin != NULL || pbSigEnd != NULL)
@@ -336,7 +333,7 @@ static bool CalculateMpqHashMd5(
         md5_process(&md5_state, pbDigestBuffer, dwToRead);
 
         // Move pointers
-        BeginBuffer.QuadPart += dwToRead;
+        BeginBuffer += dwToRead;
     }
 
     // Finalize the MD5 hash
@@ -363,7 +360,6 @@ static void AddTailToSha1(
     sha1_process(psha1_state, szUpperCase, nLength);
 }
 
-
 static bool CalculateMpqHashSha1(
     TMPQArchive * ha,
     PMPQ_SIGNATURE_INFO pSI,
@@ -371,7 +367,7 @@ static bool CalculateMpqHashSha1(
     unsigned char * sha1_tail1,
     unsigned char * sha1_tail2)
 {
-    LARGE_INTEGER BeginBuffer;
+    ULONGLONG BeginBuffer;
     hash_state sha1_state_temp;
     hash_state sha1_state;
     LPBYTE pbDigestBuffer = NULL;
@@ -390,13 +386,13 @@ static bool CalculateMpqHashSha1(
     // Create the digest
     for(;;)
     {
-        LARGE_INTEGER BytesRemaining;
+        ULONGLONG BytesRemaining;
         DWORD dwToRead = MPQ_DIGEST_UNIT_SIZE;
 
         // Check the number of bytes remaining
-        BytesRemaining.QuadPart = pSI->EndMpqData.QuadPart - BeginBuffer.QuadPart;
-        if(BytesRemaining.QuadPart < MPQ_DIGEST_UNIT_SIZE)
-            dwToRead = BytesRemaining.LowPart;
+        BytesRemaining = pSI->EndMpqData - BeginBuffer;
+        if(BytesRemaining < MPQ_DIGEST_UNIT_SIZE)
+            dwToRead = (DWORD)BytesRemaining;
         if(dwToRead == 0)
             break;
 
@@ -411,7 +407,7 @@ static bool CalculateMpqHashSha1(
         sha1_process(&sha1_state, pbDigestBuffer, dwToRead);
 
         // Move pointers
-        BeginBuffer.QuadPart += dwToRead;
+        BeginBuffer += dwToRead;
     }
 
     // Add all three known tails and generate three hashes
@@ -419,7 +415,7 @@ static bool CalculateMpqHashSha1(
     sha1_done(&sha1_state_temp, sha1_tail0);
 
     memcpy(&sha1_state_temp, &sha1_state, sizeof(hash_state));
-    AddTailToSha1(&sha1_state_temp, GetPlainLocalFileName(ha->pStream->szFileName));
+    AddTailToSha1(&sha1_state_temp, GetPlainFileName(ha->pStream->szFileName));
     sha1_done(&sha1_state_temp, sha1_tail1);
 
     memcpy(&sha1_state_temp, &sha1_state, sizeof(hash_state));
@@ -429,6 +425,89 @@ static bool CalculateMpqHashSha1(
     // Finalize the MD5 hash
     FREEMEM(pbDigestBuffer);
     return true;
+}
+
+static int VerifyRawMpqData(
+    TMPQArchive * ha,
+    ULONGLONG ByteOffset,
+    DWORD dwDataSize)
+{
+    hash_state md5_state;
+    ULONGLONG DataOffset = ha->MpqPos + ByteOffset;
+    ULONGLONG Md5Offset = ha->MpqPos + ByteOffset + dwDataSize;
+    LPBYTE pbDataChunk;
+    LPBYTE pbMD5Array;
+    LPBYTE pbMD5;
+    DWORD dwBytesInChunk;
+    DWORD dwChunkCount;
+    DWORD dwChunkSize = ha->pHeader->dwRawChunkSize;
+    BYTE md5[MD5_DIGEST_SIZE];
+    int nError = ERROR_SUCCESS;
+
+    // Get the number of data chunks to calculate MD5
+    assert(dwChunkSize != 0);
+    dwChunkCount = dwDataSize / dwChunkSize;
+    if(dwDataSize % dwChunkSize)
+        dwChunkCount++;
+
+    // Allocate space for data chunk and for the MD5 array
+    pbDataChunk = ALLOCMEM(BYTE, dwChunkSize);
+    if(pbDataChunk == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    // Allocate space for MD5 array
+    pbMD5Array = pbMD5 = ALLOCMEM(BYTE, dwChunkCount * MD5_DIGEST_SIZE);
+    if(pbMD5Array == NULL)
+        nError = ERROR_NOT_ENOUGH_MEMORY;
+
+    // Read the MD5 array
+    if(nError == ERROR_SUCCESS)
+    {
+        // Read the array of MD5
+        if(!FileStream_Read(ha->pStream, &Md5Offset, pbMD5Array, dwChunkCount * MD5_DIGEST_SIZE))
+            nError = GetLastError();
+    }
+
+    // Now verify every data chunk
+    if(nError == ERROR_SUCCESS)
+    {
+        for(DWORD i = 0; i < dwChunkCount; i++)
+        {
+            // Get the number of bytes in the chunk
+            dwBytesInChunk = STORMLIB_MIN(dwChunkSize, dwDataSize);
+
+            // Read the data chunk
+            if(!FileStream_Read(ha->pStream, &DataOffset, pbDataChunk, dwBytesInChunk))
+            {
+                nError = ERROR_FILE_CORRUPT;
+                break;
+            }
+
+            // Calculate MD5
+            md5_init(&md5_state);
+            md5_process(&md5_state, pbDataChunk, dwBytesInChunk);
+            md5_done(&md5_state, md5);
+
+            // Compare the MD5
+            if(memcmp(md5, pbMD5, MD5_DIGEST_SIZE))
+            {
+                nError = ERROR_FILE_CORRUPT;
+                break;
+            }
+
+            // Move pointers and offsets
+            DataOffset += dwBytesInChunk;
+            dwDataSize -= dwBytesInChunk;
+            pbMD5 += MD5_DIGEST_SIZE;
+        }
+    }
+
+    // Free memory and return result
+    if(pbMD5Array != NULL)
+        FREEMEM(pbMD5Array);
+    if(pbDataChunk != NULL)
+        FREEMEM(pbDataChunk);
+    return nError;
 }
 
 static DWORD VerifyWeakSignature(
@@ -552,28 +631,48 @@ static DWORD VerifyStrongSignature(
 DWORD WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags)
 {
     hash_state md5_state;
+    unsigned char * pFileMd5;
+    unsigned char md5[MD5_DIGEST_SIZE];
+    TFileEntry * pFileEntry;
     TMPQFile * hf;
-    TMPQMD5 Md5;
     BYTE Buffer[0x1000];
     HANDLE hFile = NULL;
     DWORD dwVerifyResult = 0;
+    DWORD dwSearchScope = SFILE_OPEN_FROM_MPQ;
     DWORD dwTotalBytes = 0;
     DWORD dwBytesRead;
     DWORD dwCrc32;
 
+    // Fix the open type for patched archives
+    if(SFileIsPatchedArchive(hMpq))
+        dwSearchScope = SFILE_OPEN_PATCHED_FILE;
+
     // Attempt to open the file
-    if(SFileOpenFileEx(hMpq, szFileName, SFILE_OPEN_FROM_MPQ, &hFile))
+    if(SFileOpenFileEx(hMpq, szFileName, dwSearchScope, &hFile))
     {
         // Get the file size
         hf = (TMPQFile *)hFile;
-        SFileGetFileInfo(hFile, SFILE_INFO_FILE_SIZE, &dwTotalBytes, sizeof(DWORD));
+        pFileEntry = hf->pFileEntry;
+        dwTotalBytes = SFileGetFileSize(hFile, NULL);
 
         // Initialize the CRC32 and MD5 contexts
         md5_init(&md5_state);
         dwCrc32 = crc32(0, Z_NULL, 0);
 
+        // If we have to verify raw data MD5, do it
+        if(dwFlags & SFILE_VERIFY_RAW_MD5)
+        {
+            if(hf->ha->pHeader->dwRawChunkSize != 0)
+            {
+                dwVerifyResult |= VERIFY_FILE_HAS_RAW_MD5;
+                if(SFileVerifyRawData(hMpq, SFILE_VERIFY_FILE, szFileName) != ERROR_SUCCESS)
+                    dwVerifyResult |= VERIFY_FILE_RAW_MD5_ERROR;
+            }
+        }
+
         // Also turn on sector checksum verification
-        hf->bCheckSectorCRCs = true;
+        if(dwFlags & SFILE_VERIFY_SECTOR_CRC)
+            hf->bCheckSectorCRCs = true;
 
         // Go through entire file and update both CRC32 and MD5
         for(;;)
@@ -583,16 +682,16 @@ DWORD WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags
             if(dwBytesRead == 0)
             {
                 if(GetLastError() == ERROR_CHECKSUM_ERROR)
-                    dwVerifyResult |= VERIFY_SECTOR_CHECKSUM_ERROR;
+                    dwVerifyResult |= VERIFY_FILE_SECTOR_CRC_ERROR;
                 break;
             }
 
             // Update CRC32 value
-            if(dwFlags & MPQ_ATTRIBUTE_CRC32)
+            if(dwFlags & SFILE_VERIFY_FILE_CRC)
                 dwCrc32 = crc32(dwCrc32, Buffer, dwBytesRead);
             
             // Update MD5 value
-            if(dwFlags & MPQ_ATTRIBUTE_MD5)
+            if(dwFlags & SFILE_VERIFY_FILE_MD5)
                 md5_process(&md5_state, Buffer, dwBytesRead);
 
             // Decrement the total size
@@ -600,37 +699,52 @@ DWORD WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags
         }
 
         // If the file has sector checksums, indicate it in the flags
-        if((hf->pBlock->dwFlags & MPQ_FILE_SECTOR_CRC) && hf->SectorChksums != NULL && hf->SectorChksums[0] != 0)
-            dwVerifyResult |= VERIFY_SECTORS_HAVE_CHECKSUM;
+        if(dwFlags & SFILE_VERIFY_SECTOR_CRC)
+        {
+            if((hf->pFileEntry->dwFlags & MPQ_FILE_SECTOR_CRC) && hf->SectorChksums != NULL && hf->SectorChksums[0] != 0)
+                dwVerifyResult |= VERIFY_FILE_HAS_SECTOR_CRC;
+        }
 
         // Check if the entire file has been read
         // No point in checking CRC32 and MD5 if not
+        // Skip checksum checks if the file has patches
         if(dwTotalBytes == 0)
         {
-            // Check if the CRC32 matches
-            if((dwFlags & MPQ_ATTRIBUTE_CRC32) && hf->pCrc32 != NULL)
+            // Check CRC32 and MD5 only if there is no patches
+            if(hf->hfPatchFile == NULL)
             {
-                // Some files may have their CRC zeroed
-                if(hf->pCrc32[0] != 0)
+                // Check if the CRC32 matches.
+                if(dwFlags & SFILE_VERIFY_FILE_CRC)
                 {
-                    dwVerifyResult |= VERIFY_FILE_HAS_CHECKSUM;
-                    if(dwCrc32 != hf->pCrc32[0])
-                        dwVerifyResult |= VERIFY_FILE_CHECKSUM_ERROR;
+                    // Only check the CRC32 if it is valid
+                    if(pFileEntry->dwCrc32 != 0)
+                    {
+                        dwVerifyResult |= VERIFY_FILE_HAS_CHECKSUM;
+                        if(dwCrc32 != pFileEntry->dwCrc32)
+                            dwVerifyResult |= VERIFY_FILE_CHECKSUM_ERROR;
+                    }
+                }
+
+                // Check if MD5 matches
+                if(dwFlags & SFILE_VERIFY_FILE_MD5)
+                {
+                    // Patch files have their MD5 saved in the patch info
+                    pFileMd5 = (hf->pPatchInfo != NULL) ? hf->pPatchInfo->md5 : pFileEntry->md5;
+                    md5_done(&md5_state, md5);
+
+                    // Only check the MD5 if it is valid
+                    if(is_valid_md5(pFileMd5))
+                    {
+                        dwVerifyResult |= VERIFY_FILE_HAS_MD5;
+                        if(memcmp(md5, pFileMd5, MD5_DIGEST_SIZE))
+                            dwVerifyResult |= VERIFY_FILE_MD5_ERROR;
+                    }
                 }
             }
-
-            // Check if MD5 matches
-            if((dwFlags & MPQ_ATTRIBUTE_MD5) && hf->pMd5 != NULL)
+            else
             {
-                md5_done(&md5_state, Md5.Value);
-
-                // Some files have the MD5 zeroed. Don't check MD5 in that case
-                if(is_valid_md5(hf->pMd5->Value))
-                {
-                    dwVerifyResult |= VERIFY_FILE_HAS_MD5;
-                    if(memcmp(Md5.Value, hf->pMd5->Value, sizeof(TMPQMD5)))
-                        dwVerifyResult |= VERIFY_FILE_MD5_ERROR;
-                }
+                // Patched files are MD5-checked automatically
+                dwVerifyResult |= VERIFY_FILE_HAS_MD5;
             }
         }
         else
@@ -648,6 +762,79 @@ DWORD WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags
 
     return dwVerifyResult;
 }
+
+// Verifies raw data of the archive Only works for MPQs version 4 or newer
+int WINAPI SFileVerifyRawData(HANDLE hMpq, DWORD dwWhatToVerify, const char * szFileName)
+{
+    TMPQArchive * ha = (TMPQArchive *)hMpq;
+    TFileEntry * pFileEntry;
+    TMPQHeader * pHeader;
+
+    // Verify input parameters
+    if(!IsValidMpqHandle(ha))
+        return ERROR_INVALID_PARAMETER;
+    pHeader = ha->pHeader;
+
+    // If the archive doesn't have raw data MD5, report it as OK
+    if(pHeader->dwRawChunkSize == 0)
+        return ERROR_SUCCESS;
+
+    // If we have to verify MPQ header, do it
+    switch(dwWhatToVerify)
+    {
+        case SFILE_VERIFY_MPQ_HEADER:
+            
+            // Only if the header is of version 4 or newer
+            if(pHeader->dwHeaderSize >= (MPQ_HEADER_SIZE_V4 - MD5_DIGEST_SIZE))
+                return VerifyRawMpqData(ha, 0, MPQ_HEADER_SIZE_V4 - MD5_DIGEST_SIZE);
+            return ERROR_SUCCESS;
+
+        case SFILE_VERIFY_HET_TABLE:
+
+            // Only if we have HET table
+            if(pHeader->HetTablePos64 && pHeader->HetTableSize64)
+                return VerifyRawMpqData(ha, pHeader->HetTablePos64, (DWORD)pHeader->HetTableSize64);
+            return ERROR_SUCCESS;
+
+        case SFILE_VERIFY_BET_TABLE:
+
+            // Only if we have BET table
+            if(pHeader->BetTablePos64 && pHeader->BetTableSize64)
+                return VerifyRawMpqData(ha, pHeader->BetTablePos64, (DWORD)pHeader->BetTableSize64);
+            return ERROR_SUCCESS;
+
+        case SFILE_VERIFY_HASH_TABLE:
+
+            // Hash table is not protected by MD5
+            return ERROR_SUCCESS;
+
+        case SFILE_VERIFY_BLOCK_TABLE:
+
+            // Block table is not protected by MD5
+            return ERROR_SUCCESS;
+
+        case SFILE_VERIFY_HIBLOCK_TABLE:
+
+            // It is unknown if the hi-block table is protected my MD5 or not.
+            return ERROR_SUCCESS;
+
+        case SFILE_VERIFY_FILE:
+
+            // Verify parameters
+            if(szFileName == NULL || *szFileName == 0)
+                return ERROR_INVALID_PARAMETER;
+
+            // Get the offset of a file
+            pFileEntry = GetFileEntryLocale(ha, szFileName, lcFileLocale);
+            if(pFileEntry == NULL)
+                return ERROR_FILE_NOT_FOUND;
+
+            return VerifyRawMpqData(ha, pFileEntry->ByteOffset, pFileEntry->dwCmpSize);
+    }
+
+    return ERROR_INVALID_PARAMETER;
+}
+
 
 // Verifies the archive against the signature
 DWORD WINAPI SFileVerifyArchive(HANDLE hMpq)

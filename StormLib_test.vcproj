@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="windows-1250"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="9,00"
 	Name="StormLib_test"
 	ProjectGUID="{AA561A7B-26EA-49AF-90E8-C53C1FA2965D}"
 	RootNamespace="StormLib_test"
 	Keyword="Win32Proj"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -47,13 +48,12 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="./src/libtomcrypt/src/headers"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;__STORMLIB_TEST__"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
 			/>
 			<Tool
@@ -70,6 +70,8 @@
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -89,9 +91,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -126,11 +125,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="./src/libtomcrypt/src/headers"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;__STORMLIB_TEST__"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -149,6 +147,8 @@
 				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -168,9 +168,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -200,7 +197,7 @@
 			Name="Header Files"
 			>
 			<File
-				RelativePath=".\src\SCommon.h"
+				RelativePath=".\src\StormCommon.h"
 				>
 			</File>
 			<File
@@ -228,7 +225,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\SCommon.cpp"
+				RelativePath=".\src\SBaseCommon.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -280,6 +277,26 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="ReleaseAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\SBaseFileTable.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -840,6 +857,18 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\src\SFilePatchArchives.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\src\SFileReadFile.cpp"
 				>
 				<FileConfiguration
@@ -960,30 +989,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\test\starcraft_lzma.asm"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="MASM"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath=".\test\starcraft_sparse.asm"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="MASM"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath=".\test\Test.cpp"
 				>
 				<FileConfiguration
@@ -992,6 +997,30 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						WarningLevel="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\test\x86_ripped_code.asm"
+				>
+			</File>
+			<File
+				RelativePath=".\test\x86_starcraft_lzma.asm"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="MASM"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="MASM"
 					/>
 				</FileConfiguration>
 			</File>
@@ -1896,6 +1925,18 @@
 				</File>
 				<File
 					RelativePath=".\src\zlib\zutil.c"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="jenkins"
+				>
+				<File
+					RelativePath=".\src\jenkins\lookup.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\jenkins\lookup3.c"
 					>
 				</File>
 			</Filter>

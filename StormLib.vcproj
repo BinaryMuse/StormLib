@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="windows-1250"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="9,00"
 	Name="StormLib"
 	ProjectGUID="{78424708-1F6E-4D4B-920C-FB6D26847055}"
 	RootNamespace="StormLib"
 	Keyword="Win32Proj"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -49,7 +50,6 @@
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -114,7 +114,6 @@
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -178,7 +177,6 @@
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -243,7 +241,6 @@
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -305,7 +302,6 @@
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -368,7 +364,6 @@
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -430,7 +425,6 @@
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -493,7 +487,6 @@
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -550,7 +543,7 @@
 			Name="Header Files"
 			>
 			<File
-				RelativePath=".\src\SCommon.h"
+				RelativePath=".\src\StormCommon.h"
 				>
 			</File>
 			<File
@@ -568,9 +561,73 @@
 			<File
 				RelativePath=".\src\FileStream.cpp"
 				>
+				<FileConfiguration
+					Name="DebugAD|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAD|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\SCommon.cpp"
+				RelativePath=".\src\SBaseCommon.cpp"
 				>
 				<FileConfiguration
 					Name="DebugAD|Win32"
@@ -582,6 +639,90 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAD|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="ReleaseAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\src\SBaseFileTable.cpp"
+				>
+				<FileConfiguration
+					Name="DebugAD|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -641,6 +782,22 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="ReleaseAD|Win32"
 					>
 					<Tool
@@ -686,6 +843,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -745,6 +918,22 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="ReleaseAD|Win32"
 					>
 					<Tool
@@ -790,6 +979,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -849,6 +1054,22 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="ReleaseAD|Win32"
 					>
 					<Tool
@@ -894,6 +1115,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -953,6 +1190,22 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="ReleaseAD|Win32"
 					>
 					<Tool
@@ -998,6 +1251,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1057,6 +1326,22 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="ReleaseAD|Win32"
 					>
 					<Tool
@@ -1109,6 +1394,22 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
 					Name="ReleaseAD|Win32"
 					>
 					<Tool
@@ -1142,6 +1443,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\src\SFilePatchArchives.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\SFileReadFile.cpp"
 				>
 				<FileConfiguration
@@ -1154,6 +1459,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -1206,6 +1527,22 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="DebugAD|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						WarningLevel="4"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="DebugAS|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -2146,6 +2483,18 @@
 				</File>
 				<File
 					RelativePath=".\src\zlib\zutil.c"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="jenkins"
+				>
+				<File
+					RelativePath=".\src\jenkins\lookup.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\jenkins\lookup3.c"
 					>
 				</File>
 			</Filter>

@@ -1,13 +1,21 @@
 project(StormLib)
 cmake_minimum_required(VERSION 2.6)
+
 set(SRC_FILES
            src/adpcm/adpcm.cpp
            src/huffman/huff.cpp
+           src/jenkins/lookup3.c
+           src/libtomcrypt/src/misc/crypt_libc.c
+           src/libtomcrypt/src/pk/rsa/rsa_verify_simple.c
+           src/lzma/C/LzFind.c
+           src/lzma/C/LzmaDec.c
+           src/lzma/C/LzmaEnc.c
+           src/pklib/explode.c
+           src/pklib/implode.c
            src/sparse/sparse.cpp
-           src/StormLib.h
-           src/StormPort.h
            src/FileStream.cpp
-           src/SCommon.cpp
+           src/SBaseCommon.cpp
+           src/SBaseFileTable.cpp
            src/SCompression.cpp
            src/SFileAddFile.cpp
            src/SFileAttributes.cpp
@@ -18,8 +26,12 @@ set(SRC_FILES
            src/SFileListFile.cpp
            src/SFileOpenArchive.cpp
            src/SFileOpenFileEx.cpp
+           src/SFilePatchArchives.cpp
            src/SFileReadFile.cpp
            src/SFileVerify.cpp
+)
+
+set(TOMCRYPT_FILES
            src/libtomcrypt/src/hashes/hash_memory.c
            src/libtomcrypt/src/hashes/md5.c
            src/libtomcrypt/src/hashes/sha1.c
@@ -32,7 +44,6 @@ set(SRC_FILES
            src/libtomcrypt/src/misc/crypt_find_prng.c
            src/libtomcrypt/src/misc/crypt_hash_descriptor.c
            src/libtomcrypt/src/misc/crypt_hash_is_valid.c
-           src/libtomcrypt/src/misc/crypt_libc.c
            src/libtomcrypt/src/misc/crypt_ltc_mp_descriptor.c
            src/libtomcrypt/src/misc/crypt_prng_descriptor.c
            src/libtomcrypt/src/misc/crypt_prng_is_valid.c
@@ -80,7 +91,9 @@ set(SRC_FILES
            src/libtomcrypt/src/pk/rsa/rsa_import.c
            src/libtomcrypt/src/pk/rsa/rsa_make_key.c
            src/libtomcrypt/src/pk/rsa/rsa_verify_hash.c
-           src/libtomcrypt/src/pk/rsa/rsa_verify_simple.c
+)
+
+set(TOMMATH_FILES
            src/libtommath/bncore.c
            src/libtommath/bn_fast_mp_invmod.c
            src/libtommath/bn_fast_mp_montgomery_reduce.c
@@ -199,11 +212,6 @@ set(SRC_FILES
            src/libtommath/bn_s_mp_mul_high_digs.c
            src/libtommath/bn_s_mp_sqr.c
            src/libtommath/bn_s_mp_sub.c
-           src/lzma/C/LzFind.c
-           src/lzma/C/LzmaDec.c
-           src/lzma/C/LzmaEnc.c
-           src/pklib/explode.c
-           src/pklib/implode.c
 )
 
 set(ZLIB_BZIP2_FILES
@@ -229,35 +237,51 @@ set(TEST_SRC_FILES
            test/Test.cpp
 )
 
-set(CMAKE_C_FLAGS "-D_7ZIP_ST -DBZ_STRICT_ANSI")
+add_definitions(-D_7ZIP_ST -DBZ_STRICT_ANSI)
 
 if(WIN32)
     if(MSVC)
         message(STATUS "Using MSVC")
-        set(CMAKE_C_FLAGS "-D_7ZIP_ST -DWIN32")
+        add_definitions(-D_7ZIP_ST -DWIN32)
     else()
         message(STATUS "Using mingw")
     endif()
-    set(SRC_ADDITIONAL_FILES ${ZLIB_BZIP2_FILES})
+    set(SRC_ADDITIONAL_FILES ${ZLIB_BZIP2_FILES} ${TOMCRYPT_FILES} ${TOMMATH_FILES})
 endif()
 
 if(APPLE)
     message(STATUS "Using Mac OS X port")
-    set(LINK_FLAGS "-lz -lbz2 -framework Carbon")
-    set(PUBLIC_HEADERS src/StormLib.h src/StormPort.h)
+    set(LINK_LIBS z bz2)
+    set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES} ${TOMMATH_FILES})
 endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     message(STATUS "Using Linux port")
-    set(LINK_FLAGS "-lz -lbz2")
+#   If you have LibTomCrypt installed, change the following lines to the commented one
+#   set(LINK_LIBS z bz2 tomcrypt tommath)
+    set(LINK_LIBS z bz2)
+    set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES} ${TOMMATH_FILES})
 endif()
 
 add_library(StormLib SHARED ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
-add_executable(StormLib_test.exe ${SRC_FILES} ${ZLIB_BZIP2_FILES} ${TEST_SRC_FILES})
+target_link_libraries(StormLib ${LINK_LIBS})
+
+add_library(StormLib_static STATIC ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
+target_link_libraries(StormLib_static ${LINK_LIBS})
+set_target_properties(StormLib_static PROPERTIES OUTPUT_NAME StormLib)
+
+add_executable(StormLib_test ${TEST_SRC_FILES})
+target_link_libraries(StormLib_test StormLib_static)
 
 if(APPLE)
-    set_target_properties(StormLib PROPERTIES FRAMEWORK true LINK_FLAGS "${LINK_FLAGS}")
-    set_target_properties(StormLib PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
-else()
-    set_target_properties(StormLib PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+    set_target_properties(StormLib PROPERTIES FRAMEWORK true)
+    set_target_properties(StormLib PROPERTIES PUBLIC_HEADER "src/StormLib.h src/StormPort.h")
+    set_target_properties(StormLib PROPERTIES LINK_FLAGS "-framework Carbon")
 endif()
+
+if(UNIX)
+    set_target_properties(StormLib PROPERTIES SOVERSION 0)
+endif()
+
+install(TARGETS StormLib StormLib_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+install(FILES src/StormLib.h src/StormPort.h DESTINATION include)

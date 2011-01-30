@@ -14,46 +14,73 @@
 /*****************************************************************************/
 
 #define __STORMLIB_SELF__
+#define __INCLUDE_CRYPTOGRAPHY__
 #include "StormLib.h"
-#include "SCommon.h"
+#include "StormCommon.h"
 
 /*****************************************************************************/
 /* Local functions                                                           */
 /*****************************************************************************/
 
-static bool IsAviFile(TMPQHeader * pHeader)
+static bool IsAviFile(void * pvFileBegin)
 {
-    DWORD * AviHdr = (DWORD *)pHeader;
+    LPDWORD AviHeader = (DWORD *)pvFileBegin;
+    DWORD DwordValue0 = BSWAP_INT32_UNSIGNED(AviHeader[0]);
+    DWORD DwordValue2 = BSWAP_INT32_UNSIGNED(AviHeader[2]);
+    DWORD DwordValue3 = BSWAP_INT32_UNSIGNED(AviHeader[3]);
 
-#ifdef PLATFORM_LITTLE_ENDIAN
     // Test for 'RIFF', 'AVI ' or 'LIST'
-    return (AviHdr[0] == 0x46464952 && AviHdr[2] == 0x20495641 && AviHdr[3] == 0x5453494C);
-#else
-    return (AviHdr[0] == 0x52494646 && AviHdr[2] == 0x41564920 && AviHdr[3] == 0x4C495354);
-#endif
+    return (DwordValue0 == 0x46464952 && DwordValue2 == 0x20495641 && DwordValue3 == 0x5453494C);
 }
 
 // This function gets the right positions of the hash table and the block table.
-static void RelocateMpqTablePositions(TMPQArchive * ha)
+static int VerifyMpqTablePositions(TMPQArchive * ha, ULONGLONG FileSize)
 {
-    TMPQHeader2 * pHeader = ha->pHeader;
+    TMPQHeader * pHeader = ha->pHeader;
+    ULONGLONG ByteOffset;
 
-    // Set the proper hash table position
-    ha->HashTablePos.HighPart = pHeader->wHashTablePosHigh;
-    ha->HashTablePos.LowPart = pHeader->dwHashTablePos;
-    ha->HashTablePos.QuadPart += ha->MpqPos.QuadPart;
-
-    // Set the proper block table position
-    ha->BlockTablePos.HighPart = pHeader->wBlockTablePosHigh;
-    ha->BlockTablePos.LowPart = pHeader->dwBlockTablePos;
-    ha->BlockTablePos.QuadPart += ha->MpqPos.QuadPart;
-
-    // Set the proper position of the extended block table
-    if(pHeader->ExtBlockTablePos.QuadPart != 0)
+    // Check the begin of HET table
+    if(pHeader->HetTablePos64)
     {
-        ha->ExtBlockTablePos = pHeader->ExtBlockTablePos;
-        ha->ExtBlockTablePos.QuadPart += ha->MpqPos.QuadPart;
+        ByteOffset = ha->MpqPos + pHeader->HetTablePos64;
+        if(ByteOffset > FileSize)
+            return ERROR_BAD_FORMAT;
     }
+
+    // Check the begin of BET table
+    if(pHeader->BetTablePos64)
+    {
+        ByteOffset = ha->MpqPos + pHeader->BetTablePos64;
+        if(ByteOffset > FileSize)
+            return ERROR_BAD_FORMAT;
+    }
+
+    // Check the begin of hash table
+    if(pHeader->wHashTablePosHi || pHeader->dwHashTablePos)
+    {
+        ByteOffset = ha->MpqPos + MAKE_OFFSET64(pHeader->wHashTablePosHi, pHeader->dwHashTablePos);
+        if(ByteOffset > FileSize)
+            return ERROR_BAD_FORMAT;
+    }
+
+    // Check the begin of block table
+    if(pHeader->wBlockTablePosHi || pHeader->dwBlockTablePos)
+    {
+        ByteOffset = ha->MpqPos + MAKE_OFFSET64(pHeader->wBlockTablePosHi, pHeader->dwBlockTablePos);
+        if(ByteOffset > FileSize)
+            return ERROR_BAD_FORMAT;
+    }
+
+    // Check the begin of hi-block table
+    if(pHeader->HiBlockTablePos64 != 0)
+    {
+        ByteOffset = ha->MpqPos + pHeader->HiBlockTablePos64;
+        if(ByteOffset > FileSize)
+            return ERROR_BAD_FORMAT;
+    }
+
+    // All OK.
+    return ERROR_SUCCESS;
 }
 
 
@@ -63,7 +90,20 @@ static void RelocateMpqTablePositions(TMPQArchive * ha)
 
 //-----------------------------------------------------------------------------
 // SFileGetLocale and SFileSetLocale
-// Set the locale for all neewly opened archives and files
+// Set the locale for all newly opened files
+
+DWORD WINAPI SFileGetGlobalFlags()
+{
+    return dwGlobalFlags;
+}
+
+DWORD WINAPI SFileSetGlobalFlags(DWORD dwNewFlags)
+{
+    DWORD dwOldFlags = dwGlobalFlags;
+
+    dwGlobalFlags = dwNewFlags;
+    return dwOldFlags;
+}
 
 LCID WINAPI SFileGetLocale()
 {
@@ -84,18 +124,17 @@ LCID WINAPI SFileSetLocale(LCID lcNewLocale)
 //   dwFlags    - See MPQ_OPEN_XXX in StormLib.h
 //   phMpq      - Pointer to store open archive handle
 
+//extern "C" void wow_SFileVerifyMpqHeaderMD5(TMPQHeader * ha);
+
 bool WINAPI SFileOpenArchive(
     const char * szMpqName,
     DWORD dwPriority,
     DWORD dwFlags,
     HANDLE * phMpq)
 {
-    LARGE_INTEGER FileSize = {0};
     TFileStream * pStream = NULL;       // Open file stream
     TMPQArchive * ha = NULL;            // Archive handle
-    DWORD dwCompressedTableSize = 0;    // Size of compressed block/hash table
-    DWORD dwTableSize = 0;              // Size of block/hash table
-    DWORD dwBytes = 0;                  // Number of bytes to read
+    ULONGLONG FileSize = 0;             // Size of the file
     int nError = ERROR_SUCCESS;   
 
     // Verify the parameters
@@ -109,15 +148,24 @@ bool WINAPI SFileOpenArchive(
     // Open the MPQ archive file
     if(nError == ERROR_SUCCESS)
     {
-        pStream = FileStream_OpenFile(szMpqName, (dwFlags & MPQ_OPEN_READ_ONLY) ? false : true);
-        if(pStream == NULL)
-            nError = GetLastError();
+        if(!(dwFlags & MPQ_OPEN_ENCRYPTED))
+        {
+            pStream = FileStream_OpenFile(szMpqName, (dwFlags & MPQ_OPEN_READ_ONLY) ? false : true);
+            if(pStream == NULL)
+                nError = GetLastError();
+        }
+        else
+        {
+            pStream = FileStream_OpenEncrypted(szMpqName);
+            if(pStream == NULL)
+                nError = GetLastError();
+        }
     }
     
     // Allocate the MPQhandle
     if(nError == ERROR_SUCCESS)
     {
-        FileStream_GetSize(pStream, &FileSize);
+        FileStream_GetSize(pStream, FileSize);
         if((ha = ALLOCMEM(TMPQArchive, 1)) == NULL)
             nError = ERROR_NOT_ENOUGH_MEMORY;
     }
@@ -126,13 +174,11 @@ bool WINAPI SFileOpenArchive(
     if(nError == ERROR_SUCCESS)
     {
         memset(ha, 0, sizeof(TMPQArchive));
-        ha->pStream    = pStream;
-        ha->pHeader    = &ha->Header;
-        ha->pListFile  = NULL;
+        ha->pStream = pStream;
         pStream = NULL;
 
         // Remember if the archive is open for write
-        if(ha->pStream->StreamFlags & STREAM_FLAG_READ_ONLY)
+        if(ha->pStream->StreamFlags & (STREAM_FLAG_READ_ONLY | STREAM_FLAG_ENCRYPTED_FILE))
             ha->dwFlags |= MPQ_FLAG_READ_ONLY;
 
         // Also remember if we shall check sector CRCs when reading file
@@ -143,28 +189,33 @@ bool WINAPI SFileOpenArchive(
     // Find the offset of MPQ header within the file
     if(nError == ERROR_SUCCESS)
     {
-        LARGE_INTEGER SearchPos = {0};
+        ULONGLONG SearchPos = 0;
         DWORD dwHeaderID;
 
-        for(;;)
+        while(SearchPos < FileSize)
         {
+            DWORD dwBytesAvailable = MPQ_HEADER_SIZE_V4;
+
+            // Cut the bytes available, if needed
+            if((FileSize - SearchPos) < MPQ_HEADER_SIZE_V4)
+                dwBytesAvailable = (DWORD)(FileSize - SearchPos);
+
             // Read the eventual MPQ header
-            if(!FileStream_Read(ha->pStream, &SearchPos, ha->pHeader, MPQ_HEADER_SIZE_V2))
+            if(!FileStream_Read(ha->pStream, &SearchPos, ha->HeaderData, dwBytesAvailable))
             {
                 nError = GetLastError();
                 break;
             }
 
-            // Special check : Some MPQs are actually AVI files, only with
-            // changed extension.
-            if(SearchPos.QuadPart == 0 && IsAviFile(ha->pHeader))
+            // There are AVI files from Warcraft III with 'MPQ' extension.
+            if(SearchPos == 0 && IsAviFile(ha->HeaderData))
             {
                 nError = ERROR_AVI_FILE;
                 break;
             }
 
             // If there is the MPQ user data signature, process it
-            dwHeaderID = BSWAP_INT32_UNSIGNED(ha->pHeader->dwID);
+            dwHeaderID = BSWAP_INT32_UNSIGNED(*(LPDWORD)ha->HeaderData);
             if(dwHeaderID == ID_MPQ_USERDATA && ha->pUserData == NULL)
             {
                 // Ignore the MPQ user data completely if the caller wants to open the MPQ as V1.0
@@ -172,12 +223,12 @@ bool WINAPI SFileOpenArchive(
                 {
                     // Fill the user data header
                     ha->pUserData = &ha->UserData;
-                    memcpy(ha->pUserData, ha->pHeader, sizeof(TMPQUserData));
+                    memcpy(ha->pUserData, ha->HeaderData, sizeof(TMPQUserData));
                     BSWAP_TMPQUSERDATA(ha->pUserData);
 
                     // Remember the position of the user data and continue search
-                    ha->UserDataPos.QuadPart = SearchPos.QuadPart;
-                    SearchPos.QuadPart += ha->pUserData->dwHeaderOffs;
+                    ha->UserDataPos = SearchPos;
+                    SearchPos += ha->pUserData->dwHeaderOffs;
                     continue;
                 }
             }
@@ -185,50 +236,25 @@ bool WINAPI SFileOpenArchive(
             // There must be MPQ header signature
             if(dwHeaderID == ID_MPQ)
             {
-                BSWAP_TMPQHEADER(ha->pHeader);
-
                 // Save the position where the MPQ header has been found
                 if(ha->pUserData == NULL)
                     ha->UserDataPos = SearchPos;
+                ha->pHeader = (TMPQHeader *)ha->HeaderData;
                 ha->MpqPos = SearchPos;
 
-                // If valid signature has been found, break the loop
-                if(ha->pHeader->wFormatVersion == MPQ_FORMAT_VERSION_1)
-                {
-                    // W3M Map Protectors set some garbage value into the "dwHeaderSize"
-                    // field of MPQ header. This value is apparently ignored by Storm.dll
-                    if(ha->pHeader->dwHeaderSize != MPQ_HEADER_SIZE_V1)
-                    {
-                        ha->pHeader->dwHeaderSize = MPQ_HEADER_SIZE_V1;
-                        ha->dwFlags |= MPQ_FLAG_PROTECTED;
-                    }
-					break;
-                }
-
-                if(ha->pHeader->wFormatVersion == MPQ_FORMAT_VERSION_2)
-                {
-                    // W3M Map Protectors set some garbage value into the "dwHeaderSize"
-                    // field of MPQ header. This value is apparently ignored by Storm.dll
-                    if(ha->pHeader->dwHeaderSize != MPQ_HEADER_SIZE_V2)
-                    {
-                        ha->pHeader->dwHeaderSize = MPQ_HEADER_SIZE_V2;
-                        ha->dwFlags |= MPQ_FLAG_PROTECTED;
-                    }
-					break;
-                }
-
-				//
-				// Note: the "dwArchiveSize" member in the MPQ header is ignored by Storm.dll
-				// and can contain garbage value ("w3xmaster" protector)
-				// 
-                
-                nError = ERROR_NOT_SUPPORTED;
+                // Now convert the header to version 4
+                BSWAP_TMPQHEADER(ha->pHeader);
+                ConvertMpqHeaderToFormat4(ha, FileSize, dwFlags);
                 break;
             }
 
             // Move to the next possible offset
-            SearchPos.QuadPart += 0x200;
+            SearchPos += 0x200;
         }
+
+        // If we haven't found MPQ header in the file, it's an error
+        if(ha->pHeader == NULL)
+            nError = ERROR_BAD_FORMAT;
     }
 
     // Fix table positions according to format
@@ -246,63 +272,19 @@ bool WINAPI SFileOpenArchive(
             ha->pUserData = NULL;
         }
 
-        // Clear the fields not supported in older formats
-        if(ha->pHeader->wFormatVersion < MPQ_FORMAT_VERSION_2)
-        {
-            ha->pHeader->ExtBlockTablePos.QuadPart = 0;
-            ha->pHeader->wBlockTablePosHigh = 0;
-            ha->pHeader->wHashTablePosHigh = 0;
-        }
-
         // Both MPQ_OPEN_NO_LISTFILE or MPQ_OPEN_NO_ATTRIBUTES trigger read only mode
         if(dwFlags & (MPQ_OPEN_NO_LISTFILE | MPQ_OPEN_NO_ATTRIBUTES))
             ha->dwFlags |= MPQ_FLAG_READ_ONLY;
 
+        // Set the default file flags for (listfile) and (attributes)
+        ha->dwFileFlags1 =
+        ha->dwFileFlags2 = MPQ_FILE_ENCRYPTED | MPQ_FILE_COMPRESS |  MPQ_FILE_REPLACEEXISTING;
+
+        // Set the size of file sector
         ha->dwSectorSize = (0x200 << ha->pHeader->wSectorSize);
-        RelocateMpqTablePositions(ha);
 
-        // Verify if neither table is outside the file
-        if(ha->HashTablePos.QuadPart > FileSize.QuadPart)
-            nError = ERROR_BAD_FORMAT;
-        if(ha->BlockTablePos.QuadPart > FileSize.QuadPart)
-            nError = ERROR_BAD_FORMAT;
-        if(ha->ExtBlockTablePos.QuadPart > FileSize.QuadPart)
-            nError = ERROR_BAD_FORMAT;
-    }
-
-    // Allocate buffers
-    if(nError == ERROR_SUCCESS)
-    {
-        DWORD dwHashTableSize = ha->pHeader->dwHashTableSize;
-        DWORD dwBlockTableSize = ha->pHeader->dwBlockTableSize;
-
-        //
-        // Note: It is allowed that either of the tables sizes is zero.
-        // If this is the case, we increase the table size to 1
-        // to prevent unpredictable results from allocating 0 bytes of memory
-        // 
-
-        if(dwHashTableSize == 0)
-            dwHashTableSize++;
-        if(dwBlockTableSize == 0)
-            dwBlockTableSize++;
-
-        //
-        // Note that the block table should be at least as large 
-        // as the hash table (for later file additions).
-        //
-        // Note that the block table *can* be bigger than the hash table.
-        // We have to deal with this properly.
-        //
-        
-        ha->dwBlockTableMax = STORMLIB_MAX(dwHashTableSize, dwBlockTableSize);
-        
-        // Allocate all three MPQ tables
-        ha->pHashTable = ALLOCMEM(TMPQHash, dwHashTableSize);
-        ha->pBlockTable    = ALLOCMEM(TMPQBlock, ha->dwBlockTableMax);
-        ha->pExtBlockTable = ALLOCMEM(TMPQBlockEx, ha->dwBlockTableMax);
-        if(!ha->pHashTable || !ha->pBlockTable || !ha->pExtBlockTable)
-            nError = ERROR_NOT_ENOUGH_MEMORY;
+        // Verify if any of the tables doesn't start beyond the end of the file
+        nError = VerifyMpqTablePositions(ha, FileSize);
     }
 
     // Read the hash table.
@@ -310,165 +292,80 @@ bool WINAPI SFileOpenArchive(
     // has compressed block table and hash table.
     if(nError == ERROR_SUCCESS)
     {
-        dwCompressedTableSize = ha->pHeader->dwHashTableSize * sizeof(TMPQHash);
-        dwTableSize = dwCompressedTableSize;
-
-        // If the block table follows the hash table
-        // and if position of the block table is lower
-        // than uncompressed size of hash table,
-        // it means that the hash table is compressed
-        if(ha->BlockTablePos.QuadPart > ha->HashTablePos.QuadPart)
-        {
-            if((ha->HashTablePos.QuadPart + dwTableSize) > ha->BlockTablePos.QuadPart)
-            {
-                dwCompressedTableSize = (DWORD)(ha->BlockTablePos.QuadPart - ha->HashTablePos.QuadPart);
-//              bHashTableCompressed = true;
-            }
-        }
-
         //
-        // Note: We will not check if the hash table is properly decrypted.
+        // Note: We will NOT check if the hash table is properly decrypted.
         // Some MPQ protectors corrupt the hash table by rewriting part of it.
-        // The way how MPQ tables work allows arbitrary values for unused entries.
+        // Hash table, the way how it works, allows arbitrary values for unused entries.
         // 
 
-        // Read the hash table into memory
-        nError = LoadMpqTable(ha, &ha->HashTablePos, ha->pHashTable, dwCompressedTableSize, dwTableSize, "(hash table)");
+        nError = LoadHashTable(ha);
     }
 
-    // Now, read the block table
+    // Read HET table, if present
     if(nError == ERROR_SUCCESS)
     {
-        dwCompressedTableSize = ha->pHeader->dwBlockTableSize * sizeof(TMPQBlock);
-        dwTableSize = dwCompressedTableSize;
-
-        // Pre-zero the entire block table
-        memset(ha->pBlockTable, 0, (ha->dwBlockTableMax * sizeof(TMPQBlock)));
-
-        // Check whether block table is compressed
-        if(ha->ExtBlockTablePos.QuadPart != 0)
-        {
-            if(ha->ExtBlockTablePos.QuadPart > ha->BlockTablePos.QuadPart)
-            {
-                if((ha->BlockTablePos.QuadPart + dwTableSize) > ha->ExtBlockTablePos.QuadPart)
-                {
-                    dwCompressedTableSize = (DWORD)(ha->ExtBlockTablePos.QuadPart - ha->BlockTablePos.QuadPart);
-//                  bBlockTableCompressed = true;
-                }
-            }
-        }
-        else
-        {
-            if(ha->pHeader->dwArchiveSize > ha->pHeader->dwBlockTablePos)
-            {
-                if((ha->pHeader->dwBlockTablePos + dwTableSize) > ha->pHeader->dwArchiveSize)
-                {
-                    dwCompressedTableSize = (DWORD)(ha->pHeader->dwArchiveSize - ha->pHeader->dwBlockTablePos);
-//                  bBlockTableCompressed = true;
-                }
-            }
-        }
-
-        // I have found a MPQ which claimed 0x200 entries in the block table,
-        // but the file was cut and there was only 0x1A0 entries.
-        // We will handle this case properly.
-        if((ha->BlockTablePos.QuadPart + dwCompressedTableSize) > FileSize.QuadPart)
-        {
-            dwCompressedTableSize = (DWORD)(FileSize.QuadPart - ha->BlockTablePos.QuadPart);
-            dwTableSize = dwCompressedTableSize;
-        }
-
-        //
-        // One of the first cracked versions of Diablo had block table unencrypted 
-        // StormLib does NOT supports such MPQs anymore, as they are incompatible
-        // with compressed block table feature
-        //
-
-        // Read the block table
-        nError = LoadMpqTable(ha, &ha->BlockTablePos, ha->pBlockTable, dwCompressedTableSize, dwTableSize, "(block table)");
+        nError = LoadHetTable(ha);
     }
 
-    // Now, read the extended block table.
-    // For V1 archives, we still will maintain the extended block table
-    // (it will be filled with zeros)
+    // Now, build the file table. It will be built by combining
+    // the block table, BET table, hi-block table, (attributes) and (listfile).
     if(nError == ERROR_SUCCESS)
     {
-        memset(ha->pExtBlockTable, 0, ha->dwBlockTableMax * sizeof(TMPQBlockEx));
-
-        if(ha->pHeader->ExtBlockTablePos.QuadPart != 0)
-        {
-            dwBytes = ha->pHeader->dwBlockTableSize * sizeof(TMPQBlockEx);
-            if(!FileStream_Read(ha->pStream, &ha->ExtBlockTablePos, ha->pExtBlockTable, dwBytes))
-                nError = GetLastError();
-
-            // We have to convert every USHORT in ext block table from LittleEndian
-            BSWAP_ARRAY16_UNSIGNED(ha->pExtBlockTable, dwBytes);
-        }
+        nError = BuildFileTable(ha, FileSize);
     }
 
-    // Verify both block tables (if the MPQ file is not protected)
+    // Verify the file table, if no kind of protection was detected
     if(nError == ERROR_SUCCESS && (ha->dwFlags & MPQ_FLAG_PROTECTED) == 0)
     {
-        LARGE_INTEGER RawFilePos;
-        TMPQBlockEx * pBlockEx;
-        TMPQBlock * pBlock;
-        TMPQHash * pHashEnd = ha->pHashTable + ha->pHeader->dwHashTableSize;
-        TMPQHash * pHash;
+        TFileEntry * pFileTableEnd = ha->pFileTable + ha->pHeader->dwBlockTableSize;
+        TFileEntry * pFileEntry = ha->pFileTable;
+//      ULONGLONG ArchiveSize = 0;
+        ULONGLONG RawFilePos;
 
-        // Parse the hash table and the block table
-        for(pHash = ha->pHashTable; pHash < pHashEnd; pHash++)
+        // Parse all file entries
+        for(pFileEntry = ha->pFileTable; pFileEntry < pFileTableEnd; pFileEntry++)
         {
-            if(pHash->dwBlockIndex < ha->pHeader->dwBlockTableSize)
+            // If that file entry is valid, check the file position
+            if(pFileEntry->dwFlags & MPQ_FILE_EXISTS)
             {
-                // Get both block table entries
-                pBlockEx = ha->pExtBlockTable + pHash->dwBlockIndex;
-                pBlock = ha->pBlockTable + pHash->dwBlockIndex;
+                // Get the 64-bit file position,
+                // relative to the begin of the file
+                RawFilePos = ha->MpqPos + pFileEntry->ByteOffset;
 
-                // If the file exists, check if it doesn't go beyond the end of the file
-                if(pBlock->dwFlags & MPQ_FILE_EXISTS)
+                // Begin of the file must be within range
+                if(RawFilePos > FileSize)
                 {
-                    // Get the 64-bit file position
-                    RawFilePos.HighPart = pBlockEx->wFilePosHigh;
-                    RawFilePos.LowPart = pBlock->dwFilePos;
-
-                    // Begin of the file must be within range
-                    RawFilePos.QuadPart += ha->MpqPos.QuadPart;
-                    if(RawFilePos.QuadPart > FileSize.QuadPart)
-                    {
-                        nError = ERROR_FILE_CORRUPT;
-                        break;
-                    }
-
-                    // End of the file must be within range
-                    RawFilePos.QuadPart += pBlock->dwCSize;
-                    if(RawFilePos.QuadPart > FileSize.QuadPart)
-                    {
-                        nError = ERROR_FILE_CORRUPT;
-                        break;
-                    }
+                    nError = ERROR_FILE_CORRUPT;
+                    break;
                 }
+
+                // End of the file must be within range
+                RawFilePos += pFileEntry->dwCmpSize;
+                if(RawFilePos > FileSize)
+                {
+                    nError = ERROR_FILE_CORRUPT;
+                    break;
+                }
+
+                // Also, we remember end of the file
+//              if(RawFilePos > ArchiveSize)
+//                  ArchiveSize = RawFilePos;
             }
         }
     }
 
-    // If the caller didn't specified otherwise, 
-    // include the internal listfile to the TMPQArchive structure
+    // Load the internal listfile and include it to the file table
     if(nError == ERROR_SUCCESS && (dwFlags & MPQ_OPEN_NO_LISTFILE) == 0)
     {
-        // Create listfile and load it from the MPQ
-        nError = SListFileCreateListFile(ha);
-        if(nError == ERROR_SUCCESS)
-            SFileAddListFile((HANDLE)ha, NULL);
+        // Ignore result of the operation. (listfile) is optional.
+        SFileAddListFile((HANDLE)ha, NULL);
     }
 
-    // If the caller didn't specified otherwise, 
-    // load the "(attributes)" file
+    // Load the "(attributes)" file and merge it to the file table
     if(nError == ERROR_SUCCESS && (dwFlags & MPQ_OPEN_NO_ATTRIBUTES) == 0)
     {
-        // Create the attributes file and load it from the MPQ
-        nError = SAttrCreateAttributes(ha, 0);
-        if(nError == ERROR_SUCCESS)
-            SAttrLoadAttributes(ha);
+        // Ignore result of the operation. (attributes) is optional.
+        SAttrLoadAttributes(ha);
     }
 
     // Cleanup and exit
@@ -488,7 +385,7 @@ bool WINAPI SFileOpenArchive(
 // bool SFileFlushArchive(HANDLE hMpq)
 //
 // Saves all dirty data into MPQ archive.
-// Has similar effect like SFileCLoseArchive, but the archive is not closed.
+// Has similar effect like SFileCloseArchive, but the archive is not closed.
 // Use on clients who keep MPQ archive open even for write operations,
 // and terminating without calling SFileCloseArchive might corrupt the archive.
 //
@@ -510,14 +407,17 @@ bool WINAPI SFileFlushArchive(HANDLE hMpq)
     // Save listfile (if created), attributes (if created) and also save MPQ tables.
     if(ha->dwFlags & MPQ_FLAG_CHANGED)
     {
+        // Save the (listfile)
         nError = SListFileSaveToMpq(ha);
         if(nError != ERROR_SUCCESS)
             nResultError = nError;
 
+        // Save the (attributes)
         nError = SAttrFileSaveToMpq(ha);
         if(nError != ERROR_SUCCESS)
             nResultError = nError;
 
+        // Save HET table, BET table, hash table, block table, hi-block table
         nError = SaveMPQTables(ha);
         if(nError != ERROR_SUCCESS)
             nResultError = nError;

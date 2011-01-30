@@ -110,6 +110,7 @@
   typedef long           LONG_PTR;
   typedef long           INT_PTR;
   typedef long long      LONGLONG;
+  typedef unsigned long long ULONGLONG;
   typedef void         * HANDLE;
   typedef void         * LPOVERLAPPED; // Unsupported on Linux and Mac
   typedef char           TCHAR;
@@ -118,25 +119,6 @@
   typedef DWORD        * LPDWORD;
   typedef BYTE         * LPBYTE;
 
-  typedef union _LARGE_INTEGER
-  {
-  #ifdef PLATFORM_LITTLE_ENDIAN
-    struct
-    {
-        DWORD LowPart;
-        LONG HighPart;
-    };
-  #else
-    struct
-    {
-        LONG HighPart;
-        DWORD LowPart;
-    };
-  #endif
-    LONGLONG QuadPart;
-  }
-  LARGE_INTEGER, *PLARGE_INTEGER;
-  
   #ifdef PLATFORM_32BIT
     #define _LZMA_UINT32_IS_ULONG
   #endif
@@ -203,26 +185,34 @@
     #define    BSWAP_INT16_SIGNED(a)            (a)
     #define    BSWAP_INT32_UNSIGNED(a)          (a)
     #define    BSWAP_INT32_SIGNED(a)            (a)
+    #define    BSWAP_INT64_SIGNED(a)            (a)
+    #define    BSWAP_INT64_UNSIGNED(a)          (a)
     #define    BSWAP_ARRAY16_UNSIGNED(a,b)      {}
     #define    BSWAP_ARRAY32_UNSIGNED(a,b)      {}
+    #define    BSWAP_ARRAY64_UNSIGNED(a,b)      {}
     #define    BSWAP_PART_HEADER(a)             {}
     #define    BSWAP_TMPQUSERDATA(a)            {}
     #define    BSWAP_TMPQHEADER(a)              {}
 #else
-    extern uint16_t SwapUShort(uint16_t);
-    extern uint32_t SwapULong(uint32_t);
-    extern int16_t SwapShort(uint16_t);
-    extern int32_t SwapLong(uint32_t);
+    extern int16_t  SwapInt16(uint16_t);
+    extern uint16_t SwapUInt16(uint16_t);
+    extern int32_t  SwapInt32(uint32_t);
+    extern uint32_t SwapUInt32(uint32_t);
+    extern int32_t  SwapInt64(uint64_t);
+    extern uint32_t SwapUInt64(uint64_t);
     extern void ConvertUnsignedLongBuffer(void * ptr, size_t length);
     extern void ConvertUnsignedShortBuffer(void * ptr, size_t length);
     extern void ConvertTMPQUserData(void *userData);
     extern void ConvertTMPQHeader(void *header);
-    #define    BSWAP_INT16_SIGNED(a)            SwapShort((a))
-    #define    BSWAP_INT16_UNSIGNED(a)          SwapUShort((a))
-    #define    BSWAP_INT32_SIGNED(a)            SwapLong((a))
-    #define    BSWAP_INT32_UNSIGNED(a)          SwapULong((a))
-    #define    BSWAP_ARRAY16_UNSIGNED(a,b)      ConvertUnsignedShortBuffer((a),(b))
-    #define    BSWAP_ARRAY32_UNSIGNED(a,b)      ConvertUnsignedLongBuffer((a),(b))
+    #define    BSWAP_INT16_SIGNED(a)            SwapInt16((a))
+    #define    BSWAP_INT16_UNSIGNED(a)          SwapUInt16((a))
+    #define    BSWAP_INT32_SIGNED(a)            SwapInt32((a))
+    #define    BSWAP_INT32_UNSIGNED(a)          SwapUInt32((a))
+    #define    BSWAP_INT64_SIGNED(a)            SwapInt64((a))
+    #define    BSWAP_INT64_UNSIGNED(a)          SwapUInt64((a))
+    #define    BSWAP_ARRAY16_UNSIGNED(a,b)      ConvertUInt16Buffer((a),(b))
+    #define    BSWAP_ARRAY32_UNSIGNED(a,b)      ConvertUInt32Buffer((a),(b))
+    #define    BSWAP_ARRAY64_UNSIGNED(a,b)      ConvertUInt64Buffer((a),(b))
     #define    BSWAP_PART_HEADER(a)             ConvertPartHeader(a)
     #define    BSWAP_TMPQUSERDATA(a)            ConvertTMPQUserData((a))
     #define    BSWAP_TMPQHEADER(a)              ConvertTMPQHeader((a))

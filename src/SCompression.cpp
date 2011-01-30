@@ -15,7 +15,7 @@
 #define __STORMLIB_SELF__
 #define __INCLUDE_COMPRESSION__
 #include "StormLib.h"
-#include "SCommon.h"
+#include "StormCommon.h"
 
 //-----------------------------------------------------------------------------
 // Local structures
@@ -141,6 +141,7 @@ void Compress_ZLIB(
     int /* nCmpLevel */)
 {
     z_stream z;                        // Stream information for zlib
+    int windowBits;
     int nResult;
 
     // Fill the stream structure for zlib
@@ -153,8 +154,34 @@ void Compress_ZLIB(
     z.zalloc    = NULL;
     z.zfree     = NULL;
 
-    // Initialize the compression structure. Storm.dll uses zlib version 1.1.3
-    if((nResult = deflateInit(&z, Z_DEFAULT_COMPRESSION)) == Z_OK)
+    // Determine the proper window bits (WoW.exe build 12694)
+    if(cbInBuffer <= 0x100)
+        windowBits = 8;
+    else if(cbInBuffer <= 0x200)
+        windowBits = 9;
+    else if(cbInBuffer <= 0x400)
+        windowBits = 10;
+    else if(cbInBuffer <= 0x800)
+        windowBits = 11;
+    else if(cbInBuffer <= 0x1000)
+        windowBits = 12;
+    else if(cbInBuffer <= 0x2000)
+        windowBits = 13;
+    else if(cbInBuffer <= 0x4000)
+        windowBits = 14;
+    else
+        windowBits = 15;
+
+    // Initialize the compression.
+    // Storm.dll uses zlib version 1.1.3
+    // Wow.exe uses zlib version 1.2.3
+    nResult = deflateInit2(&z,
+                            Z_DEFAULT_COMPRESSION,
+                            Z_DEFLATED,
+                            windowBits,
+                            8,
+                            Z_DEFAULT_STRATEGY);
+    if(nResult == Z_OK)
     {
         // Call zlib to compress the data
         nResult = deflate(&z, Z_FINISH);
@@ -543,7 +570,7 @@ static int Decompress_LZMA(char * pbOutBuffer, int * pcbOutBuffer, char * pbInBu
 /*                                                                            */
 /******************************************************************************/
 
-static void Compress_SPARSE(
+void Compress_SPARSE(
     char * pbOutBuffer,
     int * pcbOutBuffer,
     char * pbInBuffer,
@@ -554,7 +581,7 @@ static void Compress_SPARSE(
     CompressSparse((unsigned char *)pbOutBuffer, pcbOutBuffer, (unsigned char *)pbInBuffer, cbInBuffer);
 }
 
-static int Decompress_SPARSE(char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer)
+int Decompress_SPARSE(char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer)
 {
     return DecompressSparse((unsigned char *)pbOutBuffer, pcbOutBuffer, (unsigned char *)pbInBuffer, cbInBuffer);
 }
@@ -911,7 +938,9 @@ int WINAPI SCompDecompress(
         return 1;
     }
 
+/*
     // If the input length is the same as output length, do nothing.
+    // Unfortunately, some data in WoW-Cataclysm BETA MPQs are like that ....
     if(cbInBuffer == cbOutBuffer)
     {
         // If the buffers are equal, don't copy anything.
@@ -921,7 +950,8 @@ int WINAPI SCompDecompress(
         memcpy(pbOutBuffer, pbInBuffer, cbInBuffer);
         return 1;
     }
-    
+*/
+
     // Get applied compression types and decrement data length
     uCompressionMask = (unsigned char)*pbInBuffer++;              
     cbInBuffer--;
