@@ -14,11 +14,6 @@
 #include "StormCommon.h"
 
 //-----------------------------------------------------------------------------
-// Defines
-
-#define DEFAULT_SECTOR_SIZE  3       // Default size of a file sector
-
-//-----------------------------------------------------------------------------
 // Local variables
 
 static const DWORD MpqHeaderSizes[] =
@@ -31,6 +26,19 @@ static const DWORD MpqHeaderSizes[] =
 
 //-----------------------------------------------------------------------------
 // Local functions
+
+static USHORT GetSectorSizeShift(DWORD dwSectorSize)
+{
+    USHORT wSectorSizeShift = 0;
+
+    while(dwSectorSize > 0x200)
+    {
+        dwSectorSize >>= 1;
+        wSectorSizeShift++;
+    }
+
+    return wSectorSizeShift;
+}
 
 static int WriteNakedMPQHeader(TMPQArchive * ha)
 {
@@ -146,7 +154,7 @@ bool WINAPI SFileCreateArchive(const char * szMpqName, DWORD dwFlags, DWORD dwMa
     {
         memset(ha, 0, sizeof(TMPQArchive));
         ha->pStream         = pStream;
-        ha->dwSectorSize    = 0x200 << DEFAULT_SECTOR_SIZE;
+        ha->dwSectorSize    = (wFormatVersion >= MPQ_FORMAT_VERSION_3) ? 0x4000 : 0x1000;
         ha->UserDataPos     = MpqPos;
         ha->MpqPos          = MpqPos;
         ha->pHeader         = (TMPQHeader *)ha->HeaderData;
@@ -173,7 +181,7 @@ bool WINAPI SFileCreateArchive(const char * szMpqName, DWORD dwFlags, DWORD dwMa
         pHeader->dwHeaderSize     = MpqHeaderSizes[wFormatVersion];
         pHeader->dwArchiveSize    = pHeader->dwHeaderSize + dwHashTableSize * sizeof(TMPQHash);
         pHeader->wFormatVersion   = wFormatVersion;
-        pHeader->wSectorSize      = DEFAULT_SECTOR_SIZE; // 0x1000 bytes per sector
+        pHeader->wSectorSize      = GetSectorSizeShift(ha->dwSectorSize);
         pHeader->dwHashTablePos   = pHeader->dwHeaderSize;
         pHeader->dwHashTableSize  = dwHashTableSize;
         pHeader->dwBlockTablePos  = pHeader->dwHashTablePos + dwHashTableSize * sizeof(TMPQHash);

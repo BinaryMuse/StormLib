@@ -285,6 +285,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\src\SBaseDumpData.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\SBaseFileTable.cpp"
 				>
 				<FileConfiguration

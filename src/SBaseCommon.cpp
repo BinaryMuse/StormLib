@@ -1567,7 +1567,7 @@ void ConvertTMPQUserData(void *userData)
 // Swaps the TMPQHeader structure
 void ConvertTMPQHeader(void *header)
 {
-	TMPQHeader2 * theHeader = (TMPQHeader2 *)header;
+	TMPQHeader * theHeader = (TMPQHeader *)header;
 	
 	theHeader->dwID = SwapUInt32(theHeader->dwID);
 	theHeader->dwHeaderSize = SwapUInt32(theHeader->dwHeaderSize);

@@ -245,32 +245,43 @@ int SListFileCreateNodeForAllLocales(TMPQArchive * ha, const char * szFileName)
     TMPQHash * pFirstHash;
     TMPQHash * pHash;
 
-    // Look for the first hash table entry for the file
-    pFirstHash = pHash = GetFirstHashEntry(ha, szFileName);
-
-    // Go while we found something
-    while(pHash != NULL)
+    // If we have hash table, we use it
+    if(ha->pHashTable != NULL)
     {
-        // Is it a valid file table index ?
-        if(pHash->dwBlockIndex < pHeader->dwBlockTableSize)
+        // Look for the first hash table entry for the file
+        pFirstHash = pHash = GetFirstHashEntry(ha, szFileName);
+
+        // Go while we found something
+        while(pHash != NULL)
         {
-            // If the file name is already there, don't bother.
-            pFileEntry = ha->pFileTable + pHash->dwBlockIndex;
-            if(pFileEntry->szFileName == NULL)
+            // Is it a valid file table index ?
+            if(pHash->dwBlockIndex < pHeader->dwBlockTableSize)
             {
-                pFileEntry->szFileName = ALLOCMEM(char, strlen(szFileName) + 1);
-                if(pFileEntry->szFileName != NULL)
-                {
-                    strcpy(pFileEntry->szFileName, szFileName);
-                }
+                // Allocate file name for the file entry
+                AllocateFileName(ha->pFileTable + pHash->dwBlockIndex, szFileName);
             }
+
+            // Now find the next language version of the file
+            pHash = GetNextHashEntry(ha, pFirstHash, pHash);
         }
 
-        // Now find the next language version of the file
-        pHash = GetNextHashEntry(ha, pFirstHash, pHash);
+        return ERROR_SUCCESS;
     }
 
-    return ERROR_SUCCESS;
+    // If we have HET table, use that one
+    if(ha->pHetTable != NULL)
+    {
+        pFileEntry = GetFileEntryAny(ha, szFileName);
+        if(pFileEntry != NULL)
+        {
+            // Allocate file name for the file entry
+            AllocateFileName(pFileEntry, szFileName);
+        }
+
+        return ERROR_SUCCESS;
+    }
+
+    return ERROR_CAN_NOT_COMPLETE;
 }
 
 // Saves the whole listfile into the MPQ.

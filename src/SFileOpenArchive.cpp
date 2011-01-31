@@ -260,6 +260,9 @@ bool WINAPI SFileOpenArchive(
     // Fix table positions according to format
     if(nError == ERROR_SUCCESS)
     {
+        // Dump the header
+        DumpMpqHeader(ha->pHeader);
+
         // W3x Map Protectors use the fact that War3's Storm.dll ignores the MPQ user data,
         // and probably ignores the MPQ format version as well. The trick is to
         // fake MPQ format 2, with an improper hi-word position of hash table and block table

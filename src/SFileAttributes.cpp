@@ -41,8 +41,7 @@ int SAttrLoadAttributes(TMPQArchive * ha)
     DWORD i;
     int nError = ERROR_SUCCESS;
 
-    // Hash table must exist, and file table must be initialized
-    assert(ha->pHashTable != NULL);
+    // File table must be initialized
     assert(ha->pFileTable != NULL);
 
     // Attempt to open the "(attributes)" file.

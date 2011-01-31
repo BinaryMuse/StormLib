@@ -182,24 +182,26 @@ void TBitArray::GetBits(
     void * pvBuffer,
     int nResultByteSize)
 {
-    unsigned char * pbBuffer;
-    unsigned int nBytePosition1;                        // EBX
-    unsigned int nBytePosition0 = (nBitPosition / 8);   // ESI
-    unsigned int nByteLength = (nBitLength / 8);        // ECX
-    unsigned int nBitOffset = (nBitPosition & 0x07);    // AL
+    unsigned char * pbBuffer = (unsigned char *)pvBuffer;
+    unsigned int nBytePosition0 = (nBitPosition / 8);
+    unsigned int nBytePosition1 = nBytePosition0 + 1;
+    unsigned int nByteLength = (nBitLength / 8);
+    unsigned int nBitOffset = (nBitPosition & 0x07);
     unsigned char BitBuffer;
 
-    // Adjust the buffer pointer
-    pbBuffer = (unsigned char *)pvBuffer - nBytePosition0;
-    nBytePosition1 = nBytePosition0 + 1;
-
-    // Check if the target is properly zeroed
-#ifdef _DEBUG
-    for(int i = 0; i < nResultByteSize; i++)
-        assert(pbBuffer[nBytePosition0 + i] == 0);
-#else
+    // Keep compiler happy for platforms where nResultByteSize is not used
     nResultByteSize = nResultByteSize;
+
+#ifdef _DEBUG
+    // Check if the target is properly zeroed
+    for(int i = 0; i < nResultByteSize; i++)
+        assert(pbBuffer[i] == 0);
 #endif
+
+#ifndef PLATFORM_LITTLE_ENDIAN
+    // Adjust the buffer pointer for big endian platforms
+    pbBuffer += (nResultByteSize - 1);
+#endif    
 
     // Copy whole bytes, if any
     while(nByteLength > 0)
@@ -214,8 +216,11 @@ void TBitArray::GetBits(
             BitBuffer = Elements[nBytePosition0];
         }
 
-        // Load the 8 bits
-        pbBuffer[nBytePosition0] = BitBuffer;
+#ifdef PLATFORM_LITTLE_ENDIAN
+        *pbBuffer++ = BitBuffer;
+#else
+        *pbBuffer-- = BitBuffer;
+#endif
 
         // Move byte positions and lengths
         nBytePosition1++;
@@ -227,13 +232,12 @@ void TBitArray::GetBits(
     nBitLength = (nBitLength & 0x07);
     if(nBitLength != 0)
     {
-        BitBuffer = Elements[nBytePosition0];
-        pbBuffer[nBytePosition0] = (unsigned char)(BitBuffer >> nBitOffset);
+        *pbBuffer = (unsigned char)(Elements[nBytePosition0] >> nBitOffset);
 
         if(nBitLength > (8 - nBitOffset))
-            pbBuffer[nBytePosition0] = (unsigned char)((Elements[nBytePosition1] << (8 - nBitOffset)) | (Elements[nBytePosition0] >> nBitOffset));
+            *pbBuffer = (unsigned char)((Elements[nBytePosition1] << (8 - nBitOffset)) | (Elements[nBytePosition0] >> nBitOffset));
 
-        pbBuffer[nBytePosition0] &= (0x01 << nBitLength) - 1;
+        *pbBuffer &= (0x01 << nBitLength) - 1;
     }
 }
 
@@ -241,7 +245,7 @@ void TBitArray::SetBits(
     unsigned int nBitPosition,
     unsigned int nBitLength,
     void * pvBuffer,
-    int /* nResultByteSize */)
+    int nResultByteSize)
 {
     unsigned char * pbBuffer = (unsigned char *)pvBuffer;
     unsigned int nBytePosition = (nBitPosition / 8);
@@ -250,14 +254,25 @@ void TBitArray::SetBits(
     unsigned short AndMask = 0;
     unsigned short OneByte = 0;
 
+    // Keep compiler happy for platforms where nResultByteSize is not used
+    nResultByteSize = nResultByteSize;
+
+#ifndef PLATFORM_LITTLE_ENDIAN
+    // Adjust the buffer pointer for big endian platforms
+    pbBuffer += (nResultByteSize - 1);
+#endif    
+
     // Copy whole bytes, if any
     while(nBitLength > 8)
     {
         // Reload the bit buffer
+#ifdef PLATFORM_LITTLE_ENDIAN
         OneByte = *pbBuffer++;
+#else
+        OneByte = *pbBuffer--;
+#endif
+        // Update the BitBuffer and AndMask for the bit array
         BitBuffer = (BitBuffer >> 0x08) | (OneByte << nBitOffset);
-
-        // Update the AndMask for the bit array
         AndMask = (AndMask >> 0x08) | (0x00FF << nBitOffset);
 
         // Update the byte in the array
@@ -272,9 +287,9 @@ void TBitArray::SetBits(
     {
         // Reload the bit buffer
         OneByte = *pbBuffer;
-        BitBuffer = (BitBuffer >> 0x08) | (OneByte << nBitOffset);
 
         // Update the AND mask for the last bit
+        BitBuffer = (BitBuffer >> 0x08) | (OneByte << nBitOffset);
         AndMask = (AndMask >> 0x08) | (SetBitsMask[nBitLength] << nBitOffset);
 
         // Update the byte in the array
@@ -1169,6 +1184,9 @@ static TMPQBetTable * TranslateBetTable(
                 if(pBetTable->pBetHashes != NULL)
                     memcpy(pBetTable->pBetHashes->Elements, pbSrcData, LengthInBytes);
                 pbSrcData += BetHeader.dwBetHashArraySize;
+
+                // Dump both tables
+                DumpHetAndBetTable(ha->pHetTable, pBetTable);
             }
         }
     }
@@ -1416,6 +1434,21 @@ TFileEntry * GetFileEntryByIndex(TMPQArchive * ha, DWORD dwIndex)
     return NULL;
 }
 
+void AllocateFileName(TFileEntry * pFileEntry, const char * szFileName)
+{
+    // Sanity check
+    assert(pFileEntry != NULL);
+
+    // Only allocate new file name if it's not there yet
+    if(pFileEntry->szFileName == NULL)
+    {
+        pFileEntry->szFileName = ALLOCMEM(char, strlen(szFileName) + 1);
+        if(pFileEntry->szFileName != NULL)
+            strcpy(pFileEntry->szFileName, szFileName);
+    }
+}
+
+
 // Finds a free file entry. Does NOT increment table size,
 // althought it might reallocate it.
 TFileEntry * FindFreeFileEntry(TMPQArchive * ha)
@@ -1497,12 +1530,7 @@ TFileEntry * AllocateFileEntry(TMPQArchive * ha, const char * szFileName, LCID l
     memset(pFileEntry->md5, 0, MD5_DIGEST_SIZE);
 
     // Allocate space for file name, if it's not there yet
-    if(pFileEntry->szFileName == NULL)
-    {
-        pFileEntry->szFileName = ALLOCMEM(char, strlen(szFileName) + 1);
-        if(pFileEntry->szFileName != NULL)
-            strcpy(pFileEntry->szFileName, szFileName);
-    }
+    AllocateFileName(pFileEntry, szFileName);
 
     // If the free file entry is at the end of the file table,
     // we have to increment file table size
@@ -1783,7 +1811,6 @@ static int BuildFileTable_HetBet(
     TMPQHeader * pHeader = ha->pHeader;
     TBitArray * pBitArray;
     DWORD dwBitPosition = 0;
-    DWORD dwFlagIndex = 0;
     DWORD i;
     int nError = ERROR_SUCCESS;
 
@@ -1840,6 +1867,8 @@ static int BuildFileTable_HetBet(
         pBitArray = pBetTable->pFileTable; 
         for(i = 0; i < pBetTable->dwMaxFileCount; i++)
         {
+            DWORD dwFlagIndex = 0;
+
             // Read the file position
             pBitArray->GetBits(dwBitPosition + pBetTable->dwBitIndex_FilePos,
                                pBetTable->dwBitCount_FilePos,
@@ -1900,6 +1929,10 @@ int LoadHashTable(TMPQArchive * ha)
     DWORD dwHashTableSize = pHeader->dwHashTableSize;
     DWORD dwTableSize;
     int nError;
+
+    // If the MPQ has no hash table, do nothing
+    if(pHeader->dwHashTablePos == 0 && pHeader->wHashTablePosHi == 0)
+        return ERROR_SUCCESS;
 
     // If the hash table size is zero, we treat the MPQ as unfinished
     // and set an initial table size.
@@ -1984,7 +2017,6 @@ int BuildFileTable(TMPQArchive * ha, ULONGLONG FileSize)
     // Sanity checks
     assert(ha->dwFileTableSize == 0);
     assert(ha->dwMaxFileCount != 0);
-    assert(ha->pHashTable != NULL);
 
     // Allocate the file table with size determined before
     pFileTable = ALLOCMEM(TFileEntry, ha->dwMaxFileCount);
@@ -2180,52 +2212,3 @@ int SaveMPQTables(TMPQArchive * ha)
         FREEMEM(pHiBlockTable);
     return nError;
 }
-
-//-----------------------------------------------------------------------------
-// Support for HET and BET tables
-/*
-#ifdef _DEBUG
-static void DumpHetAndBetTable(TMPQArchive * ha)
-{
-    TMPQHetTable * pHetTable = ha->pHetTable;
-    TMPQBetTable * pBetTable = ha->pBetTable;
-    FILE * fp;
-    DWORD i;
-
-    if(pHetTable != NULL && pBetTable != NULL)
-    {
-        // Open the dump file
-        fp = fopen("HetAndBetDump.txt", "wt");
-        if(fp == NULL)
-            return;
-
-        // Dump HET hashes
-        fprintf(fp, "HetIdx HetHash BetIdx BetHash\n");
-        fprintf(fp, "======================================\n");
-        for(i = 0; i < pHetTable->dwHashTableSize; i++)
-        {
-            ULONGLONG BetHash = 0;
-            DWORD dwBetIndex = 0;
-
-            pHetTable->pBetIndexes->GetBits(i * pHetTable->dwIndexSizeTotal,
-                                            pHetTable->dwIndexSize,
-                                           &dwBetIndex,
-                                            4);
-            
-            if(dwBetIndex < pHetTable->dwMaxFileCount)
-            {
-                pBetTable->pBetHashes->GetBits(dwBetIndex * pBetTable->dwBetHashSizeTotal,
-                                               pBetTable->dwBetHashSize,
-                                              &BetHash,
-                                               8);
-            }
-
-            fprintf(fp, " %04lX    %02lX     %04lX  %016I64lX\n", i, pHetTable->pHetHashes[i], dwBetIndex, BetHash);
-        }
-        fprintf(fp, "\n");
-
-        fclose(fp);
-    }
-}
-#endif
-*/

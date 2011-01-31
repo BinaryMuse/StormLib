@@ -132,13 +132,13 @@ TFileEntry * GetFileEntryLocale(TMPQArchive * ha, const char * szFileName, LCID 
 TFileEntry * GetFileEntryExact(TMPQArchive * ha, const char * szFileName, LCID lcLocale);
 TFileEntry * GetFileEntryByIndex(TMPQArchive * ha, DWORD dwIndex);
 
+// Allocates file name in the file entry
+void AllocateFileName(TFileEntry * pFileEntry, const char * szFileName);
+
 // Allocates new file entry in the MPQ tables. Reuses existing, if possible
 TFileEntry * FindFreeFileEntry(TMPQArchive * ha);
 TFileEntry * AllocateFileEntry(TMPQArchive * ha, const char * szFileName, LCID lcLocale);
 void FreeFileEntry(TMPQArchive * ha, TFileEntry * pFileEntry);
-
-// Experimental function for testing new hash&block tables
-void TestNewHashBlockTables(TMPQArchive * ha);
 
 //-----------------------------------------------------------------------------
 // Common functions - MPQ File
@@ -203,6 +203,18 @@ int  SAttrFileSaveToMpq(TMPQArchive * ha);
 // Listfile functions
 
 int  SListFileSaveToMpq(TMPQArchive * ha);
+
+//-----------------------------------------------------------------------------
+// Dump data support
+
+#ifdef __STORMLIB_DUMP_DATA__
+void DumpMpqHeader(TMPQHeader * pHeader);
+void DumpHetAndBetTable(TMPQHetTable * pHetTable, TMPQBetTable * pBetTable);
+
+#else
+#define DumpMpqHeader(h)           /* */
+#define DumpHetAndBetTable(h, b)   /* */
+#endif
 
 #endif // __STORMCOMMON_H__
 

@@ -898,9 +898,7 @@ bool WINAPI SFileGetFileName(HANDLE hFile, char * szFileName)
         }
 
         // Put the file name to the file table
-        pFileEntry->szFileName = ALLOCMEM(char, strlen(szPseudoName) + 1);
-        if(pFileEntry->szFileName != NULL)
-            strcpy(pFileEntry->szFileName, szPseudoName);
+        AllocateFileName(pFileEntry, szPseudoName);
     }
 
     // Now put the file name to the file structure

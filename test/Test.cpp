@@ -667,11 +667,11 @@ __TryAgain:
 
 static int TestArchiveOpenAndClose(const char * szMpqName)
 {
-    const char * szFileName1 = "items\\map\\mapz0000.cel";
-    const char * szFileName2 = "items\\map\\mapz_deleted.cel";
+//  const char * szFileName1 = "items\\map\\mapz0000.cel";
+//  const char * szFileName2 = "items\\map\\mapz_deleted.cel";
     TMPQArchive * ha = NULL;
     HANDLE hFile1 = NULL;
-    HANDLE hFile2 = NULL;
+//  HANDLE hFile2 = NULL;
     HANDLE hMpq = NULL;
     int nError = ERROR_SUCCESS;
 
@@ -709,7 +709,7 @@ static int TestArchiveOpenAndClose(const char * szMpqName)
                 assert(false);
         }
     }
-*/
+
     // Verify the raw data in the archive
     if(nError == ERROR_SUCCESS)
     {
@@ -722,8 +722,6 @@ static int TestArchiveOpenAndClose(const char * szMpqName)
         SFileVerifyRawData(hMpq, SFILE_VERIFY_HIBLOCK_TABLE, NULL);
         SFileVerifyRawData(hMpq, SFILE_VERIFY_FILE, LISTFILE_NAME);
         SFileVerifyRawData(hMpq, SFILE_VERIFY_FILE, ATTRIBUTES_NAME);
-
-        SFileVerifyFile(hMpq, "base\\creature\\BASILISK\\Basilisk.M2", SFILE_VERIFY_ALL);
 
         // Try to rename and then remove the file
         SFileRenameFile(hMpq, szFileName1, szFileName2);
@@ -753,7 +751,7 @@ static int TestArchiveOpenAndClose(const char * szMpqName)
         if(!CompareArchivedFilesRR(szFileName1, hFile1, hFile2, 0x100000))
             nError = ERROR_CAN_NOT_COMPLETE;
     }
-
+*/
     if(hFile1 != NULL)
         SFileCloseFile(hFile1);
     if(hMpq != NULL)
@@ -1611,21 +1609,21 @@ int main(void)
 //      nError = TestSectorCompress(MPQ_SECTOR_SIZE);
                                                                                             
     // Test the archive open and close
-//  if(nError == ERROR_SUCCESS)
+    if(nError == ERROR_SUCCESS)
+        nError = TestArchiveOpenAndClose(MAKE_PATH("wow-update-13189.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW-Cataclysm/wow-update-13202.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2002 - Warcraft III/ProtectedMap_HashTable_FakeValid.w3x"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2010 - Starcraft II/Installer Tome 1 enGB.MPQE"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("1997 - Diablo I/single_0.sv"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2004 - World of Warcraft/SoundCache-enUS.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("DIABDAT_orig.MPQ"));
-//      nError = TestArchiveOpenAndClose(MAKE_PATH("wow-update-13189.MPQ"));
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestFindFiles(MAKE_PATH("2002 - Warcraft III/HumanEd.mpq"));
 
     // Create a big MPQ archive
-    if(nError == ERROR_SUCCESS)
-        nError = TestCreateArchive(MAKE_PATH("Test.mpq"));
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestCreateArchive(MAKE_PATH("Test.mpq"));
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestAddFilesToMpq(MAKE_PATH("wow-update-13202.MPQ"),
