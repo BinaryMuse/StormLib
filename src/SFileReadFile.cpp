@@ -1128,9 +1128,9 @@ bool WINAPI SFileGetFileInfo(
 
     // Give the result to the caller
     if(cbLengthNeeded == 8)
-        *(PULONGLONG)pvFileInfo = ResultValue;
+        *(ULONGLONG *)pvFileInfo = ResultValue;
     if(cbLengthNeeded == 4)
-        *(PDWORD)pvFileInfo = (DWORD)ResultValue;
+        *(DWORD *)pvFileInfo = (DWORD)ResultValue;
 
     // Set the last error value, if needed
     if(nError != ERROR_SUCCESS)
