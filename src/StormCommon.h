@@ -82,6 +82,13 @@ extern LCID lcFileLocale;                   // Preferred file locale
 #define MPQ_KEY_HASH_TABLE  0xC3AF3770      // Obtained by HashString("(hash table)", MPQ_HASH_FILE_KEY)
 #define MPQ_KEY_BLOCK_TABLE 0xEC83B3A3      // Obtained by HashString("(block table)", MPQ_HASH_FILE_KEY)
 
+#define MPQ_HASH_TABLE_INDEX    0x000
+#define MPQ_HASH_NAME_A         0x100
+#define MPQ_HASH_NAME_B         0x200
+#define MPQ_HASH_FILE_KEY       0x300
+
+DWORD HashString(const char * szFileName, DWORD dwHashType);
+
 void InitializeMpqCryptography();
 
 DWORD GetHashTableSizeForFileCount(DWORD dwFileCount);

@@ -28,17 +28,12 @@ USHORT  wPlatform = 0;                          // File platform
 //-----------------------------------------------------------------------------
 // Storm buffer functions
 
-#define MPQ_HASH_TABLE_INDEX    0x000
-#define MPQ_HASH_NAME_A         0x100
-#define MPQ_HASH_NAME_B         0x200
-#define MPQ_HASH_FILE_KEY       0x300
-
 #define STORM_BUFFER_SIZE       0x500
 
 static DWORD StormBuffer[STORM_BUFFER_SIZE];    // Buffer for the decryption engine
 static bool  bMpqCryptographyInitialized = false;
 
-static DWORD HashString(const char * szFileName, DWORD dwHashType)
+DWORD HashString(const char * szFileName, DWORD dwHashType)
 {
     LPBYTE pbKey   = (BYTE *)szFileName;
     DWORD  dwSeed1 = 0x7FED7FED;

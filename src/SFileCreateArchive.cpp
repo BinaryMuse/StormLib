@@ -217,9 +217,9 @@ bool WINAPI SFileCreateArchive(const char * szMpqName, DWORD dwFlags, DWORD dwMa
     // Create initial file table
     if(nError == ERROR_SUCCESS)
     {
-        ha->pFileTable = ALLOCMEM(TFileEntry, dwMaxFileCount);
+        ha->pFileTable = ALLOCMEM(TFileEntry, ha->dwMaxFileCount);
         if(ha->pFileTable != NULL)
-            memset(ha->pFileTable, 0x00, sizeof(TFileEntry) * dwMaxFileCount);
+            memset(ha->pFileTable, 0x00, sizeof(TFileEntry) * ha->dwMaxFileCount);
         else
             nError = ERROR_NOT_ENOUGH_MEMORY;
     }

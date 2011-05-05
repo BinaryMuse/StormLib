@@ -27,6 +27,70 @@ typedef struct _BLIZZARD_BSDIFF40_FILE
 //-----------------------------------------------------------------------------
 // Local functions
 
+static bool CompareNameMask(const char * szMpqName, const char * szNameMask)
+{
+    for(;;)
+    {
+        // Compare character
+        switch(*szNameMask)
+        {
+            case 0:     // End of the mask
+                return (*szMpqName == 0) ? true : false;
+
+            case '#':   // We are expecting a number
+                while('0' <= *szMpqName && *szMpqName <= '9')
+                    szMpqName++;
+                szNameMask++;
+                break;
+
+            default:
+                if(toupper(*szMpqName++) != toupper(*szNameMask++))
+                    return false;
+                break;
+        }
+    }
+}
+
+static bool GetDefaultPatchPrefix(
+    const char * szBaseMpqName,
+    const char * szPatchMpqName,
+    char * szBuffer)
+{
+    const char * szExtension;
+    const char * szDash;
+
+    // Get the plain name of the patch MPQ
+    szPatchMpqName = GetPlainFileName(szPatchMpqName);
+
+    // For files like "wow-update-13164.MPQ", the patch prefix
+    // is based on the base MPQ name
+    if(CompareNameMask(szPatchMpqName, "wow-update-#.mpq"))
+    {
+        // Patch prefix is for the Cataclysm MPQs, whose names
+        // are like "locale-enGB.MPQ" or "speech-enGB.MPQ"
+        szExtension = strrchr(szBaseMpqName, '.');
+        szDash = strrchr(szBaseMpqName, '-');
+        strcpy(szBuffer, "Base");
+
+        // If the length of the prefix doesn't match, use default one
+        if(szExtension != NULL && szDash != NULL && (szExtension - szDash) == 5)
+        {
+            // Copy the prefix
+            szBuffer[0] = szDash[1];
+            szBuffer[1] = szDash[2];
+            szBuffer[2] = szDash[3];
+            szBuffer[3] = szDash[4];
+            szBuffer[4] = 0;
+        }
+
+        return true;
+    }
+
+    // No patch prefix
+    *szBuffer = 0;
+    return false;
+}
+
 static void Decompress_RLE(LPBYTE pbDecompressed, DWORD cbDecompressed, LPBYTE pbCompressed, DWORD cbCompressed)
 {
     LPBYTE pbDecompressedEnd = pbDecompressed + cbDecompressed;
@@ -466,6 +530,7 @@ bool WINAPI SFileOpenPatchArchive(
     TMPQArchive * ha = (TMPQArchive *)hMpq;
     HANDLE hPatchMpq = NULL;
     size_t nLength = 0;
+    char szPatchPrefixBuff[MPQ_PATCH_PREFIX_LEN];
     int nError = ERROR_SUCCESS;
 
     // Keep compiler happy
@@ -477,13 +542,18 @@ bool WINAPI SFileOpenPatchArchive(
     if(szPatchMpqName == NULL || *szPatchMpqName == 0)
         nError = ERROR_INVALID_PARAMETER;
 
-    // Check the path prefix for patches
-    if(szPatchPathPrefix != NULL)
+    // If the user didn't give the patch prefix, get default one
+    if(szPatchPathPrefix == NULL)
     {
-        nLength = strlen(szPatchPathPrefix);
-        if(nLength > MPQ_PATCH_PREFIX_LEN - 2)
-            nError = ERROR_INVALID_PARAMETER;
+        // Get the default patch prefix from the base MPQ
+        GetDefaultPatchPrefix(ha->pStream->szFileName, szPatchMpqName, szPatchPrefixBuff);
+        szPatchPathPrefix = szPatchPrefixBuff;
     }
+
+    // Save length of the patch prefix
+    nLength = strlen(szPatchPathPrefix);
+    if(nLength > MPQ_PATCH_PREFIX_LEN - 2)
+        nError = ERROR_INVALID_PARAMETER;
 
     //
     // We don't allow adding patches to archives that have been open for write
@@ -520,6 +590,7 @@ bool WINAPI SFileOpenPatchArchive(
                 haPatch->szPatchPrefix[nLength++] = '\\';
                 haPatch->szPatchPrefix[nLength] = 0;
             }
+            haPatch->cchPatchPrefix = nLength;
         }
 
         // Now add the patch archive to the list of patches to the original MPQ

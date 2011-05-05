@@ -874,7 +874,7 @@ static int TestCreateArchive(const char * szMpqName)
     {
         if(!SFileCreateArchive(szMpqName,
                                MPQ_CREATE_ARCHIVE_V4 | MPQ_CREATE_ATTRIBUTES,
-                               32,
+                               7,
                               &hMpq))
         {
             nError = GetLastError();
@@ -899,12 +899,16 @@ static int TestCreateArchive(const char * szMpqName)
         {
             sprintf(szMpqFileName, "FileTest_%02u.exe", i);
             printf("Adding %s as %s ...\n", szFileName1, szMpqFileName);
-            if(!SFileAddFileEx(hMpq, szFileName1, szMpqFileName, AddFlags[i], MPQ_COMPRESSION_ZLIB))
+            if(SFileAddFileEx(hMpq, szFileName1, szMpqFileName, AddFlags[i], MPQ_COMPRESSION_ZLIB))
+            {
+                dwVerifyResult = SFileVerifyFile(hMpq, szMpqFileName, MPQ_ATTRIBUTE_CRC32 | MPQ_ATTRIBUTE_MD5);
+                if(dwVerifyResult & (VERIFY_OPEN_ERROR | VERIFY_READ_ERROR | VERIFY_FILE_SECTOR_CRC_ERROR | VERIFY_FILE_CHECKSUM_ERROR | VERIFY_FILE_MD5_ERROR))
+                    printf("CRC error on \"%s\"\n", szMpqFileName);
+            }
+            else
+            {
                 printf("Failed to add the file \"%s\".\n", szMpqFileName);
-
-            dwVerifyResult = SFileVerifyFile(hMpq, szMpqFileName, MPQ_ATTRIBUTE_CRC32 | MPQ_ATTRIBUTE_MD5);
-            if(dwVerifyResult & (VERIFY_OPEN_ERROR | VERIFY_READ_ERROR | VERIFY_FILE_SECTOR_CRC_ERROR | VERIFY_FILE_CHECKSUM_ERROR | VERIFY_FILE_MD5_ERROR))
-                printf("CRC error on \"%s\"\n", szMpqFileName);
+            }
         }
 
         // Add ZeroSize.txt (1)
@@ -1441,30 +1445,10 @@ static int TestOpenPatchedArchive(const char * szMpqName, ...)
     const char * szFileName = "ruRU/DBFilesClient/Spell.dbc";
     const char * szExtension;
     const char * szLocale;
-    char szPatchPrefix[MPQ_PATCH_PREFIX_LEN];
     char szLocFileName[MAX_PATH];
     LPBYTE pbFullFile = NULL;
     DWORD dwFileSize;
     int nError = ERROR_SUCCESS;
-
-    // Determine patch prefix for patches
-    strcpy(szPatchPrefix, "Base");
-    szExtension = strrchr(szMpqName, '.');
-    if(szExtension != NULL)
-    {
-        for(szLocale = szExtension; szLocale > szMpqName; szLocale--)
-        {
-            if(*szLocale == '-')
-            {
-                if((szExtension - szLocale) == 5)
-                {
-                    strncpy(szPatchPrefix, szLocale + 1, 4);
-                    szPatchPrefix[4] = 0;
-                }
-                break;
-            }
-        }
-    }
 
     // Open the primary MPQ
     printf("Opening %s ...\n", szMpqName);
@@ -1481,7 +1465,7 @@ static int TestOpenPatchedArchive(const char * szMpqName, ...)
         while((szMpqName = va_arg(argList, const char *)) != NULL)
         {
             printf("Adding patch %s ...\n", szMpqName);
-            if(!SFileOpenPatchArchive(hMpq, szMpqName, szPatchPrefix, 0))
+            if(!SFileOpenPatchArchive(hMpq, szMpqName, NULL, 0))
             {
                 nError = GetLastError();
                 printf("Failed to add patch %s ...\n", szMpqName);
@@ -1489,7 +1473,7 @@ static int TestOpenPatchedArchive(const char * szMpqName, ...)
         }
         va_end(argList);
     }
-/*
+
     // Now search all files
     if(nError == ERROR_SUCCESS)
     {
@@ -1504,7 +1488,6 @@ static int TestOpenPatchedArchive(const char * szMpqName, ...)
             bResult = SFileFindNextFile(hFind, &sf);
         }
     }
-*/
 
     // Now try to open patched version of "Achievement.dbc"
     if(nError == ERROR_SUCCESS)
@@ -1598,12 +1581,12 @@ int main(void)
 //      nError = TestSectorCompress(MPQ_SECTOR_SIZE);
                                                                                             
     // Test the archive open and close
-    if(nError == ERROR_SUCCESS)                     
+//  if(nError == ERROR_SUCCESS)                     
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW-Cataclysm2/expansion1.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW-Cataclysm/wow-update-13202.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2002 - Warcraft III/ProtectedMap_HashTable_FakeValid.w3x"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2010 - Starcraft II/Installer Tome 1 enGB.MPQE"));
-        nError = TestArchiveOpenAndClose(MAKE_PATH("1997 - Diablo I/DIABDAT_orig.MPQ"));
+//      nError = TestArchiveOpenAndClose(MAKE_PATH("1997 - Diablo I/DIABDAT_orig.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2004 - World of Warcraft/SoundCache-enUS.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("DIABDAT_orig.MPQ"));
 
@@ -1657,15 +1640,22 @@ int main(void)
 //                                      0x1001);
 //  }
 
-//  if(nError == ERROR_SUCCESS)
-//  {
-//      nError = TestOpenPatchedArchive(MAKE_PATH("2011 - WoW-Cataclysm2/locale-enGB.MPQ"),
-//                                      MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13164.MPQ"),
-//                                      MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13205.MPQ"),
-//                                      MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13287.MPQ"),
-//                                      MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13329.MPQ"),
-//                                      NULL);
-//  }
+    if(nError == ERROR_SUCCESS)
+    {
+        nError = TestOpenPatchedArchive(MAKE_PATH("2011 - WoW-Cataclysm2/art.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13164.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13205.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13287.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-13329.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13417.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13449.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13482.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13529.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13561.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13596.MPQ"),
+                                        MAKE_PATH("2011 - WoW-Cataclysm2/wow-update-base-13682.MPQ"),
+                                        NULL);
+    }
 
 
     // Remove the working directory

@@ -685,6 +685,7 @@ struct TMPQArchive
     TMPQArchive  * haPatch;             // Pointer to patch archive, if any
     TMPQArchive  * haBase;              // Pointer to base ("previous version") archive, if any
     char szPatchPrefix[MPQ_PATCH_PREFIX_LEN]; // Prefix for file names in patch MPQs
+    size_t         cchPatchPrefix;      // Length of the patch prefix, in characters
 
     TMPQUserData * pUserData;           // MPQ user data (NULL if not present in the file)
     TMPQHeader   * pHeader;             // MPQ file header
