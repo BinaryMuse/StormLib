@@ -257,10 +257,13 @@ endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     message(STATUS "Using Linux port")
-#   If you have LibTomCrypt installed, change the following lines to the commented one
-#   set(LINK_LIBS z bz2 tomcrypt tommath)
-    set(LINK_LIBS z bz2)
-    set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES} ${TOMMATH_FILES})
+    option(WITH_LIBTOMCRYPT "Use system LibTomCrypt library" OFF)
+    if(WITH_LIBTOMCRYPT)
+        set(LINK_LIBS z bz2 tomcrypt)
+    else()
+        set(LINK_LIBS z bz2)
+        set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES} ${TOMMATH_FILES})
+    endif()
 endif()
 
 add_library(StormLib SHARED ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
