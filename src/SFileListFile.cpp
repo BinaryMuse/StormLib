@@ -345,7 +345,7 @@ int SListFileSaveToMpq(TMPQArchive * ha)
         // Create the listfile in the MPQ
         assert(ha->dwFileFlags1 != 0);
         nError = SFileAddFile_Init(ha, LISTFILE_NAME,
-                                       NULL,
+                                       0,
                                        dwFileSize,
                                        LANG_NEUTRAL,
                                        ha->dwFileFlags1,
@@ -374,7 +374,7 @@ int SListFileSaveToMpq(TMPQArchive * ha)
         // Create the listfile in the MPQ
         dwFileSize = (DWORD)strlen(LISTFILE_NAME) + 2;
         nError = SFileAddFile_Init(ha, LISTFILE_NAME,
-                                       NULL,
+                                       0,
                                        dwFileSize,
                                        LANG_NEUTRAL,
                                        MPQ_FILE_ENCRYPTED | MPQ_FILE_COMPRESS | MPQ_FILE_REPLACEEXISTING,

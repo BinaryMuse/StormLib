@@ -210,7 +210,7 @@ int SAttrFileSaveToMpq(TMPQArchive * ha)
     // Create the attributes file in the MPQ
     assert(ha->dwFileFlags2 != 0);
     nError = SFileAddFile_Init(ha, ATTRIBUTES_NAME,
-                                   NULL,
+                                   0,
                                    dwFileSize,
                                    LANG_NEUTRAL,
                                    ha->dwFileFlags2,
