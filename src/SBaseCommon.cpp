@@ -1139,7 +1139,8 @@ int AllocateSectorChecksums(TMPQFile * hf, bool bLoadFromFile)
     // Probable cause: This is a file that is to be downloaded
     // from the server as soon as it's accessed by the game.
     dwLastIndex = (hf->SectorOffsets[0] / sizeof(DWORD)) - 2;
-    dwCompressedSize = hf->SectorOffsets[dwLastIndex + 1] - hf->SectorOffsets[dwLastIndex];
+    if(hf->SectorOffsets[dwLastIndex + 1] >= hf->SectorOffsets[dwLastIndex])
+        dwCompressedSize = hf->SectorOffsets[dwLastIndex + 1] - hf->SectorOffsets[dwLastIndex];
 
     // Check size of the checksums. If zero, there aren't any
     if(dwCompressedSize == 0)

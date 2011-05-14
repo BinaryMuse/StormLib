@@ -116,8 +116,15 @@ static int ReadMpqSectors(TMPQFile * hf, LPBYTE pbBuffer, DWORD dwByteOffset, DW
         }
 
         // If the sector checksums are not loaded yet, load them now.
-        if(hf->SectorChksums == NULL && (pFileEntry->dwFlags & MPQ_FILE_SECTOR_CRC))
+        if(hf->SectorChksums == NULL && (pFileEntry->dwFlags & MPQ_FILE_SECTOR_CRC) && hf->bLoadedSectorCRCs == false)
         {
+            // Sector CRCs is plain crap feature. It is almost never present,
+            // often it's empty, or the end offset of sector CRCs is zero.
+            // We only try to load sector CRCs once, and regardless if it fails
+            // or not, we won't try that again for te given file.
+            hf->bLoadedSectorCRCs = true;
+
+            // Load the sector CRCs.
             nError = AllocateSectorChecksums(hf, true);
             if(nError != ERROR_SUCCESS)
                 return nError;

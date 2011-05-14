@@ -738,6 +738,7 @@ struct TMPQFile
     unsigned char  hctx[HASH_STATE_SIZE];// Hash state for MD5. Used when saving file to MPQ
     DWORD          dwCrc32;             // CRC32 value, used when saving file to MPQ
 
+    bool           bLoadedSectorCRCs;   // If true, we already tried to load sector CRCs
     bool           bCheckSectorCRCs;    // If true, then SFileReadFile will check sector CRCs when reading the file
     bool           bIsWriteHandle;      // If true, this handle has been created by SFileCreateFile
     bool           bErrorOccured;       // If true, then at least one error occured during saving the file to the archive
