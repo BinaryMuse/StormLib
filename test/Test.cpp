@@ -1580,9 +1580,9 @@ int main(void)
 //      nError = TestSectorCompress(MPQ_SECTOR_SIZE);
                                                                                             
     // Test the archive open and close
-//  if(nError == ERROR_SUCCESS)                     
-//      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW-Cataclysm2/expansion1.MPQ"));
-//      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW-Cataclysm/wow-update-13202.MPQ"));
+    if(nError == ERROR_SUCCESS)                     
+        nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW BETA/wow-update-enGB-14002.MPQ"));
+//      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW BETA/wow-update-13202.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2002 - Warcraft III/ProtectedMap_HashTable_FakeValid.w3x"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2010 - Starcraft II/Installer Tome 1 enGB.MPQE"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("1997 - Diablo I/DIABDAT_orig.MPQ"));
@@ -1641,8 +1641,24 @@ int main(void)
 
     if(nError == ERROR_SUCCESS)
     {
-        nError = TestOpenPatchedArchive(MAKE_PATH("2011 - WoW-Cataclysm1/locale-enGB.MPQ"),
-                                        MAKE_PATH("2011 - WoW-Cataclysm1/wow-update-enGB-13914.MPQ"),
+        nError = TestOpenPatchedArchive(MAKE_PATH("2011 - WoW BETA/locale-enGB.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13417.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13449.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13482.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13529.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13561.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13596.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13682.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13698.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13707.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13726.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13750.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13793.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13812.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13850.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13875.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-13914.MPQ"),
+                                        MAKE_PATH("2011 - WoW BETA/wow-update-enGB-14002.MPQ"),
                                         NULL);
     }
 
