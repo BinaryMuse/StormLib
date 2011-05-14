@@ -1103,7 +1103,7 @@ int AllocateSectorChecksums(TMPQFile * hf, bool bLoadFromFile)
     TMPQArchive * ha = hf->ha;
     TFileEntry * pFileEntry = hf->pFileEntry;
     ULONGLONG RawFilePos;
-    DWORD dwCompressedSize;
+    DWORD dwCompressedSize = 0;
     DWORD dwCrcOffset;                      // Offset of the CRC table, relative to file offset in the MPQ
     DWORD dwLastIndex;
     DWORD dwCrcSize;
