@@ -571,13 +571,25 @@ bool WINAPI SFileCompactArchive(HANDLE hMpq, const char * szListFile, bool /* bR
 //-----------------------------------------------------------------------------
 // Changing hash table size
 
+DWORD WINAPI SFileGetMaxFileCount(HANDLE hMpq)
+{
+    TMPQArchive * ha = (TMPQArchive *)hMpq;
+
+    return ha->dwMaxFileCount;
+}
+
 bool WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount)
 {
     TMPQHetTable * pOldHetTable = NULL;
     TMPQArchive * ha = (TMPQArchive *)hMpq;
+    TFileEntry * pOldFileTableEnd = ha->pFileTable + ha->dwFileTableSize;
+    TFileEntry * pOldFileTable = NULL;
+    TFileEntry * pOldFileEntry;
+    TFileEntry * pFileEntry;
     TMPQHash * pOldHashTable = NULL;
     DWORD dwOldHashTableSize = 0;
-    DWORD dwOldMaxFileCount = ha->dwMaxFileCount;
+    DWORD dwOldFileTableSize = 0;
+    DWORD dwFileCount = 0;
     int nError = ERROR_SUCCESS;
 
     // Test the valid parameters
