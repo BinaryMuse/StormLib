@@ -124,8 +124,6 @@ LCID WINAPI SFileSetLocale(LCID lcNewLocale)
 //   dwFlags    - See MPQ_OPEN_XXX in StormLib.h
 //   phMpq      - Pointer to store open archive handle
 
-//extern "C" void wow_SFileVerifyMpqHeaderMD5(TMPQHeader * ha);
-
 bool WINAPI SFileOpenArchive(
     const char * szMpqName,
     DWORD dwPriority,

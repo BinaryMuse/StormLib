@@ -597,11 +597,27 @@ bool WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount)
         nError = ERROR_INVALID_HANDLE;
     if(ha->dwFlags & MPQ_FLAG_READ_ONLY)
         nError = ERROR_ACCESS_DENIED;
-    
+
+    // The new limit must not be lower than file count
+    if(nError == ERROR_SUCCESS)
+    {
+        // Count the existing files
+        for(pFileEntry = ha->pFileTable; pFileEntry < pOldFileTableEnd; pFileEntry++)
+        {
+            if(pFileEntry->dwFlags & MPQ_FILE_EXISTS)
+                dwFileCount++;
+        }
+
+        if(dwFileCount > dwMaxFileCount)
+            nError = ERROR_DISK_FULL;
+    }
+
     // ALL file names must be known in order to be able
     // to rebuild hash table size
     if(nError == ERROR_SUCCESS)
+    {
         nError = CheckIfAllFilesKnown(ha, NULL, NULL);
+    }
 
     // If the MPQ has a hash table, then we relocate the hash table
     if(nError == ERROR_SUCCESS && ha->pHashTable != NULL)
@@ -634,36 +650,32 @@ bool WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount)
     // Now reallocate the file table
     if(nError == ERROR_SUCCESS)
     {
-        TFileEntry * pOldFileTable = ha->pFileTable;
+        // Save the current file table
+        dwOldFileTableSize = ha->dwFileTableSize;
+        pOldFileTable = ha->pFileTable;
 
+        // Create new one
         ha->pFileTable = ALLOCMEM(TFileEntry, dwMaxFileCount);
         if(ha->pFileTable != NULL)
-        {
             memset(ha->pFileTable, 0, dwMaxFileCount * sizeof(TFileEntry));
-            memcpy(ha->pFileTable, pOldFileTable, ha->dwFileTableSize * sizeof(TFileEntry));
-            ha->dwMaxFileCount = dwMaxFileCount;
-        }
         else
-        {
             nError = ERROR_NOT_ENOUGH_MEMORY;
-            ha->pFileTable = pOldFileTable;
-        }
     }
 
     // Now we have to build both classic hash table and HET table.
     if(nError == ERROR_SUCCESS)
     {
-        TFileEntry * pFileTableEnd = ha->pFileTable + ha->dwFileTableSize;
-        TFileEntry * pFileEntry;
         DWORD dwFileIndex = 0;
         DWORD dwHashIndex = 0;
 
-        // Make new hash table entry for each file
-        for(pFileEntry = ha->pFileTable; pFileEntry < pFileTableEnd; pFileEntry++, dwFileIndex++)
+        // Create new hash and HET entry for each file
+        pFileEntry = ha->pFileTable;
+        for(pOldFileEntry = pOldFileTable; pOldFileEntry < pOldFileTableEnd; pOldFileEntry++)
         {
-            if(pFileEntry->dwFlags & MPQ_FILE_EXISTS)
+            if(pOldFileEntry->dwFlags & MPQ_FILE_EXISTS)
             {
-                // The file name must be known
+                // Copy the old file entry to the new one
+                memcpy(pFileEntry, pOldFileEntry, sizeof(TFileEntry));
                 assert(pFileEntry->szFileName != NULL);
                 
                 // Create new entry in the hash table
@@ -687,6 +699,10 @@ bool WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount)
                         break;
                     }
                 }
+
+                // Move to the next file entry in the new table
+                pFileEntry++;
+                dwFileIndex++;
             }
         }
     }
@@ -695,6 +711,8 @@ bool WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount)
     // Keep the (listfile) and (attributes) as-is
     if(nError == ERROR_SUCCESS)
     {
+        ha->dwFileTableSize = dwMaxFileCount;
+        ha->dwMaxFileCount = dwMaxFileCount;
         ha->dwFlags |= MPQ_FLAG_CHANGED | MPQ_FLAG_LISTFILE_VALID | MPQ_FLAG_ATTRIBS_VALID;
         SaveMPQTables(ha);
     }
@@ -708,15 +726,20 @@ bool WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount)
             ha->pHashTable = pOldHashTable;
         }
 
-        // Revert HET table
+        // Revert the HET table
         if(ha->pHetTable != NULL && pOldHetTable != NULL)
         {
             FreeHetTable(ha->pHetTable);
             ha->pHetTable = pOldHetTable;
         }
 
-        // Revert maximum file count
-        ha->dwMaxFileCount = dwOldMaxFileCount;
+        // Revert the file table
+        if(pOldFileTable != NULL)
+        {
+            FREEMEM(ha->pFileTable);
+            ha->pFileTable = pOldFileTable;
+        }
+
         SetLastError(nError);
     }
 
