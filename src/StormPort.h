@@ -26,6 +26,12 @@
 #ifndef __STORMPORT_H__
 #define __STORMPORT_H__
 
+#ifndef __cplusplus
+  #define bool char
+  #define true 1
+  #define false 0
+#endif
+
 // Defines for Windows
 #if !defined(PLATFORM_DEFINED) && (defined(WIN32) || defined(WIN64))
 
