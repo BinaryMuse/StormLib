@@ -850,9 +850,11 @@ static int TestCreateArchive(const char * szMpqName)
     const char * szFileName2 = MAKE_PATH("ZeroSize.txt");
     HANDLE hMpq = NULL;                 // Handle of created archive 
     DWORD dwVerifyResult;
+    DWORD dwFileCount = 0;
     LCID LocaleIDs[] = {0x000, 0x405, 0x406, 0x407, 0xFFFF};
     char szMpqFileName[MAX_PATH];
     int nError = ERROR_SUCCESS;
+    int i;
 
     // Create the new file
     printf("Creating %s ...\n", szMpqName);
@@ -895,7 +897,7 @@ static int TestCreateArchive(const char * szMpqName)
 //      }
 
         // Add FileTest.exe
-        for(int i = 0; AddFlags[i] != 0xFFFFFFFF; i++)
+        for(i = 0; AddFlags[i] != 0xFFFFFFFF; i++)
         {
             sprintf(szMpqFileName, "FileTest_%02u.exe", i);
             printf("Adding %s as %s ...\n", szFileName1, szMpqFileName);
@@ -904,6 +906,7 @@ static int TestCreateArchive(const char * szMpqName)
                 dwVerifyResult = SFileVerifyFile(hMpq, szMpqFileName, MPQ_ATTRIBUTE_CRC32 | MPQ_ATTRIBUTE_MD5);
                 if(dwVerifyResult & (VERIFY_OPEN_ERROR | VERIFY_READ_ERROR | VERIFY_FILE_SECTOR_CRC_ERROR | VERIFY_FILE_CHECKSUM_ERROR | VERIFY_FILE_MD5_ERROR))
                     printf("CRC error on \"%s\"\n", szMpqFileName);
+                dwFileCount++;
             }
             else
             {
@@ -911,9 +914,15 @@ static int TestCreateArchive(const char * szMpqName)
             }
         }
 
+        
+        SFileRemoveFile(hMpq, "FileTest_10.exe");
+        SFileRemoveFile(hMpq, "FileTest_15.exe");
+        dwFileCount = SFileGetMaxFileCount(hMpq);
+        SFileSetMaxFileCount(hMpq, dwFileCount - 1);
+
         // Add ZeroSize.txt (1)
         sprintf(szMpqFileName, "ZeroSize_1.txt");
-        for(int i = 0; LocaleIDs[i] != 0xFFFF; i++)
+        for(i = 0; LocaleIDs[i] != 0xFFFF; i++)
         {
             printf("Adding %s as %s (locale %04x) ...\n", szFileName2, szMpqFileName, LocaleIDs[i]);
             SFileSetLocale(LocaleIDs[i]);
@@ -1442,8 +1451,8 @@ static int TestOpenPatchedArchive(const char * szMpqName, ...)
     HANDLE hMpq = NULL;
     va_list argList;
     const char * szFileName = "DBFilesClient\\Achievement.dbc";
-    const char * szExtension;
-    const char * szLocale;
+//  const char * szExtension;
+//  const char * szLocale;
     char szLocFileName[MAX_PATH];
     LPBYTE pbFullFile = NULL;
     DWORD dwFileSize;
@@ -1580,8 +1589,8 @@ int main(void)
 //      nError = TestSectorCompress(MPQ_SECTOR_SIZE);
                                                                                             
     // Test the archive open and close
-    if(nError == ERROR_SUCCESS)                     
-        nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW BETA/wow-update-enGB-14002.MPQ"));
+//  if(nError == ERROR_SUCCESS)                     
+//      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW BETA/wow-update-enGB-14002.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2011 - WoW BETA/wow-update-13202.MPQ"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2002 - Warcraft III/ProtectedMap_HashTable_FakeValid.w3x"));
 //      nError = TestArchiveOpenAndClose(MAKE_PATH("2010 - Starcraft II/Installer Tome 1 enGB.MPQE"));
@@ -1593,8 +1602,8 @@ int main(void)
 //      nError = TestFindFiles(MAKE_PATH("2002 - Warcraft III/HumanEd.mpq"));
 
     // Create a big MPQ archive
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestCreateArchive(MAKE_PATH("Test.mpq"));
+    if(nError == ERROR_SUCCESS)
+        nError = TestCreateArchive(MAKE_PATH("Test.mpq"));
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestAddFilesToMpq(MAKE_PATH("wow-update-13202.MPQ"),
@@ -1630,15 +1639,16 @@ int main(void)
     // Create copy of the archive, appending some bytes before the MPQ header
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestCreateArchiveCopy(MAKE_PATH("PartialMPQs/interface.MPQ.part"), MAKE_PATH("PartialMPQs/interface-copy.MPQ.part"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//  {
-//      nError = TestCompareTwoArchives(MAKE_PATH("2011 - WoW-Cataclysm/wow-update-13189.MPQ"),
-//                                      MAKE_PATH("wow-update-13189.MPQ"),
-//                                      NULL,
-//                                      0x1001);
-//  }
-
+/*
+    if(nError == ERROR_SUCCESS)
+    {
+        nError = TestCompareTwoArchives(MAKE_PATH("2011 - WoW-Cataclysm/wow-update-13189.MPQ"),
+                                        MAKE_PATH("wow-update-13189.MPQ"),
+                                        NULL,
+                                        0x1001);
+    }
+*/
+/*
     if(nError == ERROR_SUCCESS)
     {
         nError = TestOpenPatchedArchive(MAKE_PATH("2011 - WoW BETA/locale-enGB.MPQ"),
@@ -1661,7 +1671,7 @@ int main(void)
                                         MAKE_PATH("2011 - WoW BETA/wow-update-enGB-14002.MPQ"),
                                         NULL);
     }
-
+*/
 
     // Remove the working directory
     clreol();
