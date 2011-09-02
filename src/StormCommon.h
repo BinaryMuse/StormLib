@@ -19,30 +19,20 @@
 // when a source needs the functions
 
 #ifdef __INCLUDE_COMPRESSION__
+    #include "pklib/pklib.h"          // Include functions from Pkware Data Compression Library
 
-  #include "pklib/pklib.h"          // Include functions from Pkware Data Compression Library
+    #include "huffman/huff.h"         // Include functions from Huffmann compression
 
-  #include "huffman/huff.h"         // Include functions from Huffmann compression
+    #include "adpcm/adpcm.h"          // Include functions from IMA ADPCM compression
 
-  #include "adpcm/adpcm.h"          // Include functions from IMA ADPCM compression
+    #include "sparse/sparse.h"        // Include functions from SPARSE compression
 
-  #include "sparse/sparse.h"        // Include functions from SPARSE compression
+    #include "lzma/C/LzmaEnc.h"       // Include functions from LZMA compression
+    #include "lzma/C/LzmaDec.h"
 
-  #include "lzma/C/LzmaEnc.h"       // Include functions from LZMA compression
-  #include "lzma/C/LzmaDec.h"
+    #include <zlib.h>               // Include functions from zlib
 
-  #ifndef __SYS_ZLIB
-    #include "zlib/zlib.h"          // Include functions from zlib
-  #else
-    #include <zlib.h>               // If zlib is available on system, use this instead
-  #endif
-
-  #ifndef __SYS_BZLIB
-    #include "bzip2/bzlib.h"        // Include functions from bzlib
-  #else
-    #include <bzlib.h>              // If bzlib is available on system, use this instead
-  #endif
-
+    #include <bzlib.h>        // Include functions from bzlib
 #endif
 
 //-----------------------------------------------------------------------------
@@ -50,7 +40,8 @@
 // when a source needs the functions
 
 #ifdef __INCLUDE_CRYPTOGRAPHY__
-#include "libtomcrypt/src/headers/tomcrypt.h"
+#include <tomcrypt.h>
+#include <tommath.h>
 #include "jenkins/lookup.h"
 #endif
 
@@ -60,7 +51,7 @@
 #define ID_MPQ_FILE              0x46494c45 // Used internally for checking TMPQFile ('FILE')
 
 #define MPQ_WEAK_SIGNATURE_SIZE        64
-#define MPQ_STRONG_SIGNATURE_SIZE     256 
+#define MPQ_STRONG_SIGNATURE_SIZE     256
 
 // Prevent problems with CRT "min" and "max" functions,
 // as they are not defined on all platforms

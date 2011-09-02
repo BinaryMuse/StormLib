@@ -83,7 +83,8 @@ void InitializeMpqCryptography()
         register_hash(&sha1_desc);
 
         // Use LibTomMath as support math library for LibTomCrypt
-        ltc_mp = ltm_desc;    
+//         ltc_mp = ltm_desc;
+#warning Disabling ltc_mp
 
         // Don't do that again
         bMpqCryptographyInitialized = true;
@@ -96,7 +97,7 @@ void InitializeMpqCryptography()
 DWORD GetHashTableSizeForFileCount(DWORD dwFileCount)
 {
     DWORD dwPowerOfTwo;
-    
+
     // Round the hash table size up to the nearest power of two
     for(dwPowerOfTwo = HASH_TABLE_SIZE_MIN; dwPowerOfTwo < HASH_TABLE_SIZE_MAX; dwPowerOfTwo <<= 1)
     {
@@ -458,16 +459,16 @@ DWORD DetectFileKeyByKnownContent(void * pvFileContent, DWORD nDwords, ...)
     DWORD saveKey1;
     DWORD dwTemp;
     DWORD i, j;
-    
+
     // We need at least two DWORDS to detect the file key
     if(nDwords < 0x02 || nDwords > 0x10)
         return 0;
-    
+
     va_start(argList, nDwords);
     for(i = 0; i < nDwords; i++)
         dwDecrypted[i] = va_arg(argList, DWORD);
     va_end(argList);
-    
+
     dwTemp = (*pdwContent ^ dwDecrypted[0]) - 0xEEEEEEEE;
     for(i = 0; i < 0x100; i++)      // Try all 256 possibilities
     {
@@ -563,7 +564,7 @@ bool IsValidMpqHandle(TMPQArchive * ha)
         return false;
     if(ha->pHeader == NULL || ha->pHeader->dwID != ID_MPQ)
         return false;
-    
+
     return (bool)(ha->pHeader->dwID == ID_MPQ);
 }
 
@@ -835,7 +836,7 @@ int LoadMpqTable(
 }
 
 void CalculateRawSectorOffset(
-    ULONGLONG & RawFilePos, 
+    ULONGLONG & RawFilePos,
     TMPQFile * hf,
     DWORD dwSectorOffset)
 {
@@ -1056,7 +1057,7 @@ int AllocateSectorOffsets(TMPQFile * hf, bool bLoadFromFile)
             // (Example: expansion-locale-frFR.MPQ from WoW Cataclysm BETA)
             // We detect such behavior here by verifying the value
             // of the first entry in the sector offset table
-            // 
+            //
             // Also, the (attributes) file from patch MPQs from WoW tends
             // to have some additional values in the sector offset table,
             // with an unknown meaning
@@ -1154,7 +1155,7 @@ int AllocateSectorChecksums(TMPQFile * hf, bool bLoadFromFile)
     // Calculate offset of the CRC table
     dwCrcSize = hf->dwSectorCount * sizeof(DWORD);
     dwCrcOffset = hf->SectorOffsets[hf->dwSectorCount];
-    CalculateRawSectorOffset(RawFilePos, hf, dwCrcOffset); 
+    CalculateRawSectorOffset(RawFilePos, hf, dwCrcOffset);
 
     // Now read the table from the MPQ
     return LoadMpqTable(ha, RawFilePos, hf->SectorChksums, dwCompressedSize, dwCrcSize, 0);
@@ -1202,7 +1203,7 @@ int WriteSectorOffsets(TMPQFile * hf)
     // Write sector offsets to the archive
     if(!FileStream_Write(ha->pStream, &RawFilePos, hf->SectorOffsets, dwSectorOffsLen))
         return GetLastError();
-    
+
     // Not necessary, as the sector checksums
     // are going to be freed when this is done.
 //  BSWAP_ARRAY32_UNSIGNED(hf->SectorOffsets, dwSectorOffsLen);
@@ -1261,7 +1262,7 @@ int WriteSectorChecksums(TMPQFile * hf)
     // are going to be freed when this is done.
 //  BSWAP_ARRAY32_UNSIGNED(hf->SectorChksums, dwCrcSize);
 
-    // Store the sector CRCs 
+    // Store the sector CRCs
     hf->SectorOffsets[hf->dwSectorCount + 1] = hf->SectorOffsets[hf->dwSectorCount] + dwCompressedSize;
     pFileEntry->dwCmpSize += dwCompressedSize;
     FREEMEM(pbCompressed);
@@ -1489,25 +1490,25 @@ bool IsInternalMpqFileName(const char * szFileName)
 // Swaps a signed 16-bit integer
 int16_t SwapInt16(uint16_t data)
 {
-	return (int16_t)CFSwapInt16(data);
+    return (int16_t)CFSwapInt16(data);
 }
 
 // Swaps an unsigned 16-bit integer
 uint16_t SwapUInt16(uint16_t data)
 {
-	return CFSwapInt16(data);
+    return CFSwapInt16(data);
 }
 
 // Swaps signed 32-bit integer
 int32_t SwapInt32(uint32_t data)
 {
-	return (int32_t)CFSwapInt32(data);
+    return (int32_t)CFSwapInt32(data);
 }
 
 // Swaps an unsigned 32-bit integer
 uint32_t SwapUInt32(uint32_t data)
 {
-	return CFSwapInt32(data);
+    return CFSwapInt32(data);
 }
 
 // Swaps signed 64-bit integer
@@ -1529,10 +1530,10 @@ void ConvertUInt16Buffer(void * ptr, size_t length)
     uint32_t nElements = (uint32_t)(length / sizeof(uint16_t));
 
     while(nElements-- > 0)
-	{
-		*buffer = SwapUInt16(*buffer);
-		buffer++;
-	}
+    {
+        *buffer = SwapUInt16(*buffer);
+        buffer++;
+    }
 }
 
 // Swaps array of unsigned 32-bit integers
@@ -1541,11 +1542,11 @@ void ConvertUInt32Buffer(void * ptr, size_t length)
     uint32_t * buffer = (uint32_t *)ptr;
     uint32_t nElements = (uint32_t)(length / sizeof(uint32_t));
 
-	while(nElements-- > 0)
-	{
-		*buffer = SwapUInt32(*buffer);
-		buffer++;
-	}
+    while(nElements-- > 0)
+    {
+        *buffer = SwapUInt32(*buffer);
+        buffer++;
+    }
 }
 
 // Swaps array of unsigned 64-bit integers
@@ -1554,55 +1555,55 @@ void ConvertUInt64Buffer(void * ptr, size_t length)
     uint64_t * buffer = (uint64_t *)ptr;
     uint32_t nElements = (uint32_t)(length / sizeof(uint64_t));
 
-	while(nElements-- > 0)
-	{
-		*buffer = SwapUInt64(*buffer);
-		buffer++;
-	}
+    while(nElements-- > 0)
+    {
+        *buffer = SwapUInt64(*buffer);
+        buffer++;
+    }
 }
 
 // Swaps the TMPQUserData structure
 void ConvertTMPQUserData(void *userData)
 {
-	TMPQUserData * theData = (TMPQUserData *)userData;
+    TMPQUserData * theData = (TMPQUserData *)userData;
 
-	theData->dwID = SwapUInt32(theData->dwID);
-	theData->cbUserDataSize = SwapUInt32(theData->cbUserDataSize);
-	theData->dwHeaderOffs = SwapUInt32(theData->dwHeaderOffs);
-	theData->cbUserDataHeader = SwapUInt32(theData->cbUserDataHeader);
+    theData->dwID = SwapUInt32(theData->dwID);
+    theData->cbUserDataSize = SwapUInt32(theData->cbUserDataSize);
+    theData->dwHeaderOffs = SwapUInt32(theData->dwHeaderOffs);
+    theData->cbUserDataHeader = SwapUInt32(theData->cbUserDataHeader);
 }
 
 // Swaps the TMPQHeader structure
 void ConvertTMPQHeader(void *header)
 {
-	TMPQHeader * theHeader = (TMPQHeader *)header;
-	
-	theHeader->dwID = SwapUInt32(theHeader->dwID);
-	theHeader->dwHeaderSize = SwapUInt32(theHeader->dwHeaderSize);
-	theHeader->dwArchiveSize = SwapUInt32(theHeader->dwArchiveSize);
-	theHeader->wFormatVersion = SwapUInt16(theHeader->wFormatVersion);
-	theHeader->wSectorSize = SwapUInt16(theHeader->wSectorSize);
-	theHeader->dwHashTablePos = SwapUInt32(theHeader->dwHashTablePos);
-	theHeader->dwBlockTablePos = SwapUInt32(theHeader->dwBlockTablePos);
-	theHeader->dwHashTableSize = SwapUInt32(theHeader->dwHashTableSize);
-	theHeader->dwBlockTableSize = SwapUInt32(theHeader->dwBlockTableSize);
+    TMPQHeader * theHeader = (TMPQHeader *)header;
 
-	if(theHeader->wFormatVersion >= MPQ_FORMAT_VERSION_2)
-	{
-		// Swap the hi-block table position
-		theHeader->HiBlockTablePos64 = SwapUInt64(theHeader->HiBlockTablePos64);
-		
+    theHeader->dwID = SwapUInt32(theHeader->dwID);
+    theHeader->dwHeaderSize = SwapUInt32(theHeader->dwHeaderSize);
+    theHeader->dwArchiveSize = SwapUInt32(theHeader->dwArchiveSize);
+    theHeader->wFormatVersion = SwapUInt16(theHeader->wFormatVersion);
+    theHeader->wSectorSize = SwapUInt16(theHeader->wSectorSize);
+    theHeader->dwHashTablePos = SwapUInt32(theHeader->dwHashTablePos);
+    theHeader->dwBlockTablePos = SwapUInt32(theHeader->dwBlockTablePos);
+    theHeader->dwHashTableSize = SwapUInt32(theHeader->dwHashTableSize);
+    theHeader->dwBlockTableSize = SwapUInt32(theHeader->dwBlockTableSize);
+
+    if(theHeader->wFormatVersion >= MPQ_FORMAT_VERSION_2)
+    {
+        // Swap the hi-block table position
+        theHeader->HiBlockTablePos64 = SwapUInt64(theHeader->HiBlockTablePos64);
+
         theHeader->wHashTablePosHi = SwapUInt16(theHeader->wHashTablePosHi);
-		theHeader->wBlockTablePosHi = SwapUInt16(theHeader->wBlockTablePosHi);
+        theHeader->wBlockTablePosHi = SwapUInt16(theHeader->wBlockTablePosHi);
 
         if(theHeader->wFormatVersion >= MPQ_FORMAT_VERSION_3)
-    	{
+        {
             theHeader->ArchiveSize64 = SwapUInt64(theHeader->ArchiveSize64);
             theHeader->BetTablePos64 = SwapUInt64(theHeader->BetTablePos64);
             theHeader->HetTablePos64 = SwapUInt64(theHeader->HetTablePos64);
 
             if(theHeader->wFormatVersion >= MPQ_FORMAT_VERSION_4)
-        	{
+            {
                 theHeader->HashTableSize64    = SwapUInt64(theHeader->HashTableSize64);
                 theHeader->BlockTableSize64   = SwapUInt64(theHeader->BlockTableSize64);
                 theHeader->HiBlockTableSize64 = SwapUInt64(theHeader->HiBlockTableSize64);
@@ -1610,7 +1611,7 @@ void ConvertTMPQHeader(void *header)
                 theHeader->BetTableSize64     = SwapUInt64(theHeader->BetTableSize64);
             }
         }
-	}
+    }
 }
 
 #endif  // PLATFORM_LITTLE_ENDIAN
