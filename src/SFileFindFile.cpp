@@ -63,7 +63,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
     for(;;)
     {
         // If there is '?' in the wildcard, we skip one char
-        while(*szWildCard == '?')
+        while (*szWildCard == '?')
         {
             szWildCard++;
             szString++;
@@ -74,7 +74,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
         if(*szWildCard == '*')
         {
             // More stars is equal to one star
-            while(*szWildCard == '*' || *szWildCard == '?')
+            while (*szWildCard == '*' || *szWildCard == '?')
                 szWildCard++;
 
             // If we found end of the wildcard, it's a match
@@ -83,17 +83,17 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
 
             // Determine the length of the substring in szWildCard
             szSubString = szWildCard;
-            while(*szSubString != 0 && *szSubString != '?' && *szSubString != '*')
+            while (*szSubString != 0 && *szSubString != '?' && *szSubString != '*')
                 szSubString++;
             nSubStringLength = (int)(szSubString - szWildCard);
             nMatchCount = 0;
 
             // Now we have to find a substring in szString,
             // that matches the substring in szWildCard
-            while(*szString != 0)
+            while (*szString != 0)
             {
                 // Calculate match count
-                while(nMatchCount < nSubStringLength)
+                while (nMatchCount < nSubStringLength)
                 {
                     if(toupper(szString[nMatchCount]) != toupper(szWildCard[nMatchCount]))
                         break;
@@ -137,7 +137,7 @@ static DWORD GetSearchTableItems(TMPQArchive * ha)
     DWORD dwMergeItems = 0;
 
     // Loop over all patches
-    while(ha != NULL)
+    while (ha != NULL)
     {
         // Append the number of files
         dwMergeItems += (ha->pHetTable != NULL) ? ha->pHetTable->dwMaxFileCount
@@ -150,10 +150,7 @@ static DWORD GetSearchTableItems(TMPQArchive * ha)
     return (dwMergeItems | 1);
 }
 
-static bool FileWasFoundBefore(
-    TMPQArchive * ha,
-    TMPQSearch * hs,
-    TFileEntry * pFileEntry)
+static bool FileWasFoundBefore(TMPQArchive * ha, TMPQSearch * hs, TFileEntry * pFileEntry)
 {
     TFileEntry * pEntry;
     char * szRealFileName = pFileEntry->szFileName;
@@ -219,7 +216,7 @@ static TFileEntry * FindPatchEntry(TMPQArchive * ha, TFileEntry * pFileEntry)
     LCID lcLocale = pFileEntry->lcLocale;
 
     // Go while there are patches
-    while(ha->haPatch != NULL)
+    while (ha->haPatch != NULL)
     {
         // Move to the patch archive
         ha = ha->haPatch;
@@ -252,7 +249,7 @@ static int DoMPQSearch(TMPQSearch * hs, SFILE_FIND_DATA * lpFindFileData)
     size_t nPrefixLength;
 
     // Start searching with base MPQ
-    while(ha != NULL)
+    while (ha != NULL)
     {
         // Now parse the file entry table in order to get all files.
         pFileTableEnd = ha->pFileTable + ha->dwFileTableSize;
@@ -262,7 +259,7 @@ static int DoMPQSearch(TMPQSearch * hs, SFILE_FIND_DATA * lpFindFileData)
         nPrefixLength = strlen(ha->szPatchPrefix);
 
         // Parse the file table
-        while(pFileEntry < pFileTableEnd)
+        while (pFileEntry < pFileTableEnd)
         {
             // Increment the next index for subsequent search
             hs->dwNextIndex++;

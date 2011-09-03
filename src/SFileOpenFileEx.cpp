@@ -63,12 +63,12 @@ bool OpenPatchedFile(HANDLE hMpq, const char * szFileName, DWORD dwReserved, HAN
         strcat(szPatchFileName, szFileName);
         if(SFileOpenFileEx((HANDLE)ha, szPatchFileName, SFILE_OPEN_FROM_MPQ, (HANDLE *)&hfBase))
         {
-            //
-            // The following scenario is possible:
-            // 1) Base MPQ file doesn't contain the desired file
-            // 2) First patch MPQ contains the file with MPQ_FILE_PATCH_FILE
-            // 3) Second patch contains full version of the file
-            //
+            /*
+             * The following scenario is possible:
+             * 1) Base MPQ file doesn't contain the desired file
+             * 2) First patch MPQ contains the file with MPQ_FILE_PATCH_FILE
+             * 3) Second patch contains full version of the file
+             */
 
             break;
         }
