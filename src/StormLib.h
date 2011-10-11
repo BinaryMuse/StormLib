@@ -833,104 +833,104 @@ LCID   WINAPI SFileSetLocale(LCID lcNewLocale);
 //-----------------------------------------------------------------------------
 // Functions for archive manipulation
 
-bool   WINAPI SFileOpenArchive(const char * szMpqName, DWORD dwPriority, DWORD dwFlags, HANDLE * phMpq);
-bool   WINAPI SFileCreateArchive(const char * szMpqName, DWORD dwFlags, DWORD dwMaxFileCount, HANDLE * phMpq);
+extern "C" bool   WINAPI SFileOpenArchive(const char * szMpqName, DWORD dwPriority, DWORD dwFlags, HANDLE * phMpq);
+extern "C" bool   WINAPI SFileCreateArchive(const char * szMpqName, DWORD dwFlags, DWORD dwMaxFileCount, HANDLE * phMpq);
 
-bool   WINAPI SFileFlushArchive(HANDLE hMpq);
-bool   WINAPI SFileCloseArchive(HANDLE hMpq);
+extern "C" bool   WINAPI SFileFlushArchive(HANDLE hMpq);
+extern "C" bool   WINAPI SFileCloseArchive(HANDLE hMpq);
 
 // Adds another listfile into MPQ. The currently added listfile(s) remain,
 // so you can use this API to combining more listfiles.
 // Note that this function is internally called by SFileFindFirstFile
-int    WINAPI SFileAddListFile(HANDLE hMpq, const char * szListFile);
+extern "C" int    WINAPI SFileAddListFile(HANDLE hMpq, const char * szListFile);
 
 // Archive compacting
-bool   WINAPI SFileSetCompactCallback(HANDLE hMpq, SFILE_COMPACT_CALLBACK CompactCB, void * pvData);
-bool   WINAPI SFileCompactArchive(HANDLE hMpq, const char * szListFile = NULL, bool bReserved = 0);
+extern "C" bool   WINAPI SFileSetCompactCallback(HANDLE hMpq, SFILE_COMPACT_CALLBACK CompactCB, void * pvData);
+extern "C" bool   WINAPI SFileCompactArchive(HANDLE hMpq, const char * szListFile = NULL, bool bReserved = 0);
 
 // Changing the maximum file count
-DWORD  WINAPI SFileGetMaxFileCount(HANDLE hMpq);
-bool   WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount);
+extern "C" DWORD  WINAPI SFileGetMaxFileCount(HANDLE hMpq);
+extern "C" bool   WINAPI SFileSetMaxFileCount(HANDLE hMpq, DWORD dwMaxFileCount);
 
 // Changing (attributes) file
-DWORD  WINAPI SFileGetAttributes(HANDLE hMpq);
-bool   WINAPI SFileSetAttributes(HANDLE hMpq, DWORD dwFlags);
-bool   WINAPI SFileUpdateFileAttributes(HANDLE hMpq, const char * szFileName);
+extern "C" DWORD  WINAPI SFileGetAttributes(HANDLE hMpq);
+extern "C" bool   WINAPI SFileSetAttributes(HANDLE hMpq, DWORD dwFlags);
+extern "C" bool   WINAPI SFileUpdateFileAttributes(HANDLE hMpq, const char * szFileName);
 
 //-----------------------------------------------------------------------------
 // Functions for manipulation with patch archives
 
-bool   WINAPI SFileOpenPatchArchive(HANDLE hMpq, const char * szPatchMpqName, const char * szPatchPathPrefix, DWORD dwFlags);
-bool   WINAPI SFileIsPatchedArchive(HANDLE hMpq);
+extern "C" bool   WINAPI SFileOpenPatchArchive(HANDLE hMpq, const char * szPatchMpqName, const char * szPatchPathPrefix, DWORD dwFlags);
+extern "C" bool   WINAPI SFileIsPatchedArchive(HANDLE hMpq);
 
 //-----------------------------------------------------------------------------
 // Functions for file manipulation
 
 // Reading from MPQ file
-bool   WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearchScope, HANDLE * phFile);
-DWORD  WINAPI SFileGetFileSize(HANDLE hFile, LPDWORD pdwFileSizeHigh = NULL);
-DWORD  WINAPI SFileSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
-bool   WINAPI SFileReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, LPDWORD pdwRead = NULL, LPOVERLAPPED lpOverlapped = NULL);
-bool   WINAPI SFileCloseFile(HANDLE hFile);
+extern "C" bool   WINAPI SFileOpenFileEx(HANDLE hMpq, const char * szFileName, DWORD dwSearchScope, HANDLE * phFile);
+extern "C" DWORD  WINAPI SFileGetFileSize(HANDLE hFile, LPDWORD pdwFileSizeHigh = NULL);
+extern "C" DWORD  WINAPI SFileSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
+extern "C" bool   WINAPI SFileReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, LPDWORD pdwRead = NULL, LPOVERLAPPED lpOverlapped = NULL);
+extern "C" bool   WINAPI SFileCloseFile(HANDLE hFile);
 
 // Retrieving info about the file
-bool   WINAPI SFileHasFile(HANDLE hMpq, const char * szFileName);
-bool   WINAPI SFileGetFileName(HANDLE hFile, char * szFileName);
-bool   WINAPI SFileGetFileInfo(HANDLE hMpqOrFile, DWORD dwInfoType, void * pvFileInfo, DWORD cbFileInfo, LPDWORD pcbLengthNeeded = NULL);
+extern "C" bool   WINAPI SFileHasFile(HANDLE hMpq, const char * szFileName);
+extern "C" bool   WINAPI SFileGetFileName(HANDLE hFile, char * szFileName);
+extern "C" bool   WINAPI SFileGetFileInfo(HANDLE hMpqOrFile, DWORD dwInfoType, void * pvFileInfo, DWORD cbFileInfo, LPDWORD pcbLengthNeeded = NULL);
 
 // High-level extract function
-bool   WINAPI SFileExtractFile(HANDLE hMpq, const char * szToExtract, const char * szExtracted, DWORD dwSearchScope = SFILE_OPEN_FROM_MPQ);
+extern "C" bool   WINAPI SFileExtractFile(HANDLE hMpq, const char * szToExtract, const char * szExtracted, DWORD dwSearchScope = SFILE_OPEN_FROM_MPQ);
 
 //-----------------------------------------------------------------------------
 // Functions for file and archive verification
 
 // Verifies file against its checksums stored in (attributes) attributes (depending on dwFlags).
 // For dwFlags, use one or more of MPQ_ATTRIBUTE_MD5
-DWORD  WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags);
+extern "C" DWORD  WINAPI SFileVerifyFile(HANDLE hMpq, const char * szFileName, DWORD dwFlags);
 
 // Verifies raw data of the archive. Only works for MPQs version 4 or newer
-int    WINAPI SFileVerifyRawData(HANDLE hMpq, DWORD dwWhatToVerify, const char * szFileName);
+extern "C" int    WINAPI SFileVerifyRawData(HANDLE hMpq, DWORD dwWhatToVerify, const char * szFileName);
 
 // Verifies the signature, if present
-DWORD  WINAPI SFileVerifyArchive(HANDLE hMpq);
+extern "C" DWORD  WINAPI SFileVerifyArchive(HANDLE hMpq);
 
 //-----------------------------------------------------------------------------
 // Functions for file searching
 
-HANDLE WINAPI SFileFindFirstFile(HANDLE hMpq, const char * szMask, SFILE_FIND_DATA * lpFindFileData, const char * szListFile);
-bool   WINAPI SFileFindNextFile(HANDLE hFind, SFILE_FIND_DATA * lpFindFileData);
-bool   WINAPI SFileFindClose(HANDLE hFind);
+extern "C" HANDLE WINAPI SFileFindFirstFile(HANDLE hMpq, const char * szMask, SFILE_FIND_DATA * lpFindFileData, const char * szListFile);
+extern "C" bool   WINAPI SFileFindNextFile(HANDLE hFind, SFILE_FIND_DATA * lpFindFileData);
+extern "C" bool   WINAPI SFileFindClose(HANDLE hFind);
 
-HANDLE WINAPI SListFileFindFirstFile(HANDLE hMpq, const char * szListFile, const char * szMask, SFILE_FIND_DATA * lpFindFileData);
-bool   WINAPI SListFileFindNextFile(HANDLE hFind, SFILE_FIND_DATA * lpFindFileData);
-bool   WINAPI SListFileFindClose(HANDLE hFind);
+extern "C" HANDLE WINAPI SListFileFindFirstFile(HANDLE hMpq, const char * szListFile, const char * szMask, SFILE_FIND_DATA * lpFindFileData);
+extern "C" bool   WINAPI SListFileFindNextFile(HANDLE hFind, SFILE_FIND_DATA * lpFindFileData);
+extern "C" bool   WINAPI SListFileFindClose(HANDLE hFind);
 
 // Locale support
-int    WINAPI SFileEnumLocales(HANDLE hMpq, const char * szFileName, LCID * plcLocales, LPDWORD pdwMaxLocales, DWORD dwSearchScope);
+extern "C" int    WINAPI SFileEnumLocales(HANDLE hMpq, const char * szFileName, LCID * plcLocales, LPDWORD pdwMaxLocales, DWORD dwSearchScope);
 
 //-----------------------------------------------------------------------------
 // Support for adding files to the MPQ
 
-bool   WINAPI SFileCreateFile(HANDLE hMpq, const char * szArchivedName, ULONGLONG FileTime, DWORD dwFileSize, LCID lcLocale, DWORD dwFlags, HANDLE * phFile);
-bool   WINAPI SFileWriteFile(HANDLE hFile, const void * pvData, DWORD dwSize, DWORD dwCompression);
-bool   WINAPI SFileFinishFile(HANDLE hFile);
-bool   WINAPI SFileAddFileEx(HANDLE hMpq, const char * szFileName, const char * szArchivedName, DWORD dwFlags, DWORD dwCompression, DWORD dwCompressionNext = 0xFFFFFFFF);
-bool   WINAPI SFileAddFile(HANDLE hMpq, const char * szFileName, const char * szArchivedName, DWORD dwFlags);
-bool   WINAPI SFileAddWave(HANDLE hMpq, const char * szFileName, const char * szArchivedName, DWORD dwFlags, DWORD dwQuality);
-bool   WINAPI SFileRemoveFile(HANDLE hMpq, const char * szFileName, DWORD dwSearchScope = SFILE_OPEN_FROM_MPQ);
-bool   WINAPI SFileRenameFile(HANDLE hMpq, const char * szOldFileName, const char * szNewFileName);
-bool   WINAPI SFileSetFileLocale(HANDLE hFile, LCID lcNewLocale);
-bool   WINAPI SFileSetDataCompression(DWORD DataCompression);
+extern "C" bool   WINAPI SFileCreateFile(HANDLE hMpq, const char * szArchivedName, ULONGLONG FileTime, DWORD dwFileSize, LCID lcLocale, DWORD dwFlags, HANDLE * phFile);
+extern "C" bool   WINAPI SFileWriteFile(HANDLE hFile, const void * pvData, DWORD dwSize, DWORD dwCompression);
+extern "C" bool   WINAPI SFileFinishFile(HANDLE hFile);
+extern "C" bool   WINAPI SFileAddFileEx(HANDLE hMpq, const char * szFileName, const char * szArchivedName, DWORD dwFlags, DWORD dwCompression, DWORD dwCompressionNext = 0xFFFFFFFF);
+extern "C" bool   WINAPI SFileAddFile(HANDLE hMpq, const char * szFileName, const char * szArchivedName, DWORD dwFlags);
+extern "C" bool   WINAPI SFileAddWave(HANDLE hMpq, const char * szFileName, const char * szArchivedName, DWORD dwFlags, DWORD dwQuality);
+extern "C" bool   WINAPI SFileRemoveFile(HANDLE hMpq, const char * szFileName, DWORD dwSearchScope = SFILE_OPEN_FROM_MPQ);
+extern "C" bool   WINAPI SFileRenameFile(HANDLE hMpq, const char * szOldFileName, const char * szNewFileName);
+extern "C" bool   WINAPI SFileSetFileLocale(HANDLE hFile, LCID lcNewLocale);
+extern "C" bool   WINAPI SFileSetDataCompression(DWORD DataCompression);
 
-bool   WINAPI SFileSetAddFileCallback(HANDLE hMpq, SFILE_ADDFILE_CALLBACK AddFileCB, void * pvData);
+extern "C" bool   WINAPI SFileSetAddFileCallback(HANDLE hMpq, SFILE_ADDFILE_CALLBACK AddFileCB, void * pvData);
 
 //-----------------------------------------------------------------------------
 // Compression and decompression
 
-int    WINAPI SCompImplode    (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer);
-int    WINAPI SCompExplode    (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer);
-int    WINAPI SCompCompress   (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer, unsigned uCompressionMask, int nCmpType, int nCmpLevel);
-int    WINAPI SCompDecompress (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer);
+extern "C" int    WINAPI SCompImplode    (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer);
+extern "C" int    WINAPI SCompExplode    (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer);
+extern "C" int    WINAPI SCompCompress   (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer, unsigned uCompressionMask, int nCmpType, int nCmpLevel);
+extern "C" int    WINAPI SCompDecompress (char * pbOutBuffer, int * pcbOutBuffer, char * pbInBuffer, int cbInBuffer);
 
 //-----------------------------------------------------------------------------
 // Functions from Storm.dll. They use slightly different names for keeping
